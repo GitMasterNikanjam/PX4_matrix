@@ -1,50 +1,107 @@
 /**
  * @file SquareMatrix.hpp
- *
- * A square matrix
- *
+ * @brief Square matrix class with specialized operations for symmetric and covariance matrices
+ * 
+ * This file provides a template class for square matrices (M×M) derived from Matrix<Type, M, M>.
+ * It adds square‑matrix‑specific functionality including:
+ * - Matrix inversion (LU decomposition with partial pivoting, plus optimized 2x2 and 3x3 versions)
+ * - Cholesky decomposition and Cholesky inversion for positive‑definite matrices
+ * - Covariance matrix utilities (uncorrelate blocks, make symmetric, copy triangles)
+ * - Diagonal extraction, upper‑right triangle packing, partial trace
+ * - Matrix exponential (expm) approximation
+ * 
+ * The file also provides global functions for inversion, Cholesky, identity, and diagonal matrix creation.
+ * 
  * @author James Goppert <james.goppert@gmail.com>
+ * @ingroup matrix
  */
+
+/****************************************************************************
+ * Copyright (C) PX4 Development Team. All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted under the terms of the BSD 3-Clause License.
+ * See the file LICENSE for details.
+ ****************************************************************************/
 
 #pragma once
 
-#include <float.h> // FLT_EPSILON
-
-#include "Slice.hpp"
+#include <float.h>          // FLT_EPSILON for floating‑point tolerance
+#include "Slice.hpp"        // Matrix slice views
 
 namespace matrix
 {
 
+/**
+ * @brief Square matrix class with fixed size M × M
+ * 
+ * SquareMatrix<Type, M> inherits from Matrix<Type, M, M> and adds methods
+ * that are specific to square matrices, such as inversion, trace,
+ * Cholesky decomposition, covariance handling, and matrix exponential.
+ * 
+ * @tparam Type The element type (float, double, etc.)
+ * @tparam M Number of rows and columns (compile‑time constant)
+ * 
+ * @see Matrix
+ */
 template <typename Type, size_t  M>
 class SquareMatrix : public Matrix<Type, M, M>
 {
 public:
+	/**
+	 * @brief Default constructor – zero‑initialises the matrix
+	 */
 	SquareMatrix() = default;
 
+	/**
+	 * @brief Construct from a 2D C array of size M×M
+	 * @param data_ 2D array (row‑major)
+	 */
 	explicit SquareMatrix(const Type data_[M][M]) :
 		Matrix<Type, M, M>(data_)
 	{
 	}
 
+	/**
+	 * @brief Construct from a flat row‑major array of size M×M
+	 * @param data_ Flat array of length M*M
+	 */
 	explicit SquareMatrix(const Type data_[M * M]) :
 		Matrix<Type, M, M>(data_)
 	{
 	}
 
+	/**
+	 * @brief Copy constructor from a generic M×M matrix
+	 * @param other Source matrix
+	 */
 	SquareMatrix(const Matrix<Type, M, M> &other) :
 		Matrix<Type, M, M>(other)
 	{
 	}
 
+	/** Inherit all constructors from the base Matrix class */
 	using base = Matrix<Type, M, M>;
 	using base::base;
 
+	/**
+	 * @brief Assignment from a generic M×M matrix
+	 * @param other Source matrix
+	 * @return Reference to this square matrix
+	 */
 	SquareMatrix<Type, M> &operator=(const Matrix<Type, M, M> &other)
 	{
 		Matrix<Type, M, M>::operator=(other);
 		return *this;
 	}
 
+	/**
+	 * @brief Assignment from a mutable slice
+	 * @tparam P Rows in slice (must be M)
+	 * @tparam Q Columns in slice (must be M)
+	 * @param in_slice Source slice view
+	 * @return Reference to this square matrix
+	 */
 	template <size_t P, size_t Q>
 	SquareMatrix<Type, M> &operator=(const Slice<Type, M, M, P, Q> &in_slice)
 	{
@@ -52,12 +109,28 @@ public:
 		return *this;
 	}
 
+	/**
+	 * @brief Create a const slice view of the matrix
+	 * @tparam P Number of rows in the slice
+	 * @tparam Q Number of columns in the slice
+	 * @param x0 Starting row index
+	 * @param y0 Starting column index
+	 * @return Const slice view
+	 */
 	template<size_t P, size_t Q>
 	ConstSlice<Type, P, Q, M, M> slice(size_t x0, size_t y0) const
 	{
 		return {x0, y0, this};
 	}
 
+	/**
+	 * @brief Create a mutable slice view of the matrix
+	 * @tparam P Number of rows in the slice
+	 * @tparam Q Number of columns in the slice
+	 * @param x0 Starting row index
+	 * @param y0 Starting column index
+	 * @return Mutable slice view
+	 */
 	template<size_t P, size_t Q>
 	Slice<Type, P, Q, M, M> slice(size_t x0, size_t y0)
 	{
@@ -65,6 +138,14 @@ public:
 	}
 
 	// inverse alias
+
+	/**
+	 * @brief Compute the matrix inverse (returns a new matrix)
+	 * @return Inverse matrix, or zero matrix if singular
+	 * 
+	 * @note Uses the global `inv()` function which performs LU decomposition
+	 *       with partial pivoting (optimised for 1×1, 2×2, 3×3).
+	 */
 	inline SquareMatrix<Type, M> I() const
 	{
 		SquareMatrix<Type, M> i;
@@ -79,12 +160,21 @@ public:
 	}
 
 	// inverse alias
+
+	/**
+	 * @brief Compute the matrix inverse (output by reference)
+	 * @param[out] i Output inverse matrix
+	 * @return true if inversion succeeded, false if singular
+	 */
 	inline bool I(SquareMatrix<Type, M> &i) const
 	{
 		return inv(*this, i);
 	}
 
-
+	/**
+	 * @brief Extract the diagonal elements as a column vector
+	 * @return Vector of size M containing the diagonal entries
+	 */
 	Vector<Type, M> diag() const
 	{
 		Vector<Type, M> res;
@@ -97,7 +187,14 @@ public:
 		return res;
 	}
 
-	// get matrix upper right triangle in a row-major vector format
+	/**
+	 * @brief Pack the upper‑right triangle into a row‑major vector
+	 * 
+	 * Stores elements where row index ≤ column index, in row‑major order.
+	 * Length = M*(M+1)/2.
+	 * 
+	 * @return Vector containing the upper triangular part (including diagonal)
+	 */
 	Vector < Type, M *(M + 1) / 2 > upper_right_triangle() const
 	{
 		Vector < Type, M * (M + 1) / 2 > res;
@@ -115,6 +212,12 @@ public:
 		return res;
 	}
 
+	/**
+	 * @brief Compute the trace of a contiguous sub‑block (template size)
+	 * @tparam Width Number of diagonal elements to sum (≤ M)
+	 * @param first Starting diagonal index
+	 * @return Sum of diagonal elements from `first` to `first+Width-1`
+	 */
 	template <size_t Width>
 	Type trace(size_t first) const
 	{
@@ -131,14 +234,25 @@ public:
 		return res;
 	}
 
+	/**
+	 * @brief Compute the full trace of the matrix
+	 * @return Sum of all diagonal elements
+	 */
 	Type trace() const
 	{
 		const SquareMatrix<Type, M> &self = *this;
 		return self.trace<M>(0);
 	}
 
-	// keep the sub covariance matrix and zero all covariance elements related
-	// to the rest of the matrix
+	/**
+	 * @brief Zero out all covariance elements outside a diagonal block
+	 * 
+	 * Preserves the sub‑block at `[first, first]` of size Width×Width,
+	 * and sets all other elements in the corresponding rows and columns to zero.
+	 * 
+	 * @tparam Width Size of the block to keep
+	 * @param first Starting row/column index of the block
+	 */
 	template <size_t Width>
 	void uncorrelateCovarianceBlock(size_t first)
 	{
@@ -152,7 +266,16 @@ public:
 		self.slice<Width, Width>(first, first) = cov;
 	}
 
-	// zero all offdiagonal elements and keep corresponding diagonal elements
+	/**
+	 * @brief Zero off‑diagonal elements in a block, keep only diagonal variances
+	 * 
+	 * Keeps the diagonal elements of the block at `[first, first]` (size Width)
+	 * and sets all other elements (both inside the block and in the corresponding
+	 * rows/columns) to zero.
+	 * 
+	 * @tparam Width Size of the block
+	 * @param first Starting index
+	 */
 	template <size_t Width>
 	void uncorrelateCovariance(size_t first)
 	{
@@ -164,6 +287,16 @@ public:
 		self.uncorrelateCovarianceSetVariance(first, diag_elements);
 	}
 
+	/**
+	 * @brief Set a diagonal block to a diagonal matrix with given variances
+	 * 
+	 * Zeros the rows/columns corresponding to the block, then sets the diagonal
+	 * entries from the provided vector.
+	 * 
+	 * @tparam Width Size of the block
+	 * @param first Starting index
+	 * @param vec Vector of length Width containing the diagonal values
+	 */
 	template <size_t Width>
 	void uncorrelateCovarianceSetVariance(size_t first, const Vector<Type, Width> &vec)
 	{
@@ -184,6 +317,16 @@ public:
 		}
 	}
 
+	/**
+	 * @brief Set a diagonal block to a scalar times identity
+	 * 
+	 * Zeros the rows/columns corresponding to the block, then sets the diagonal
+	 * entries to the same scalar value.
+	 * 
+	 * @tparam Width Size of the block
+	 * @param first Starting index
+	 * @param val Value to assign to each diagonal entry
+	 */
 	template <size_t Width>
 	void uncorrelateCovarianceSetVariance(size_t first, Type val)
 	{
@@ -201,7 +344,15 @@ public:
 		}
 	}
 
-	// make block diagonal symmetric by taking the average of the two corresponding off diagonal values
+	/**
+	 * @brief Enforce symmetry on a diagonal block by averaging off‑diagonals
+	 * 
+	 * For the block starting at `first` of size Width, replaces each pair
+	 * (i,j) and (j,i) with their average.
+	 * 
+	 * @tparam Width Size of the block
+	 * @param first Starting index
+	 */
 	template <size_t Width>
 	void makeBlockSymmetric(size_t first)
 	{
@@ -221,7 +372,15 @@ public:
 		}
 	}
 
-	// make rows and columns symmetric by taking the average of the two corresponding off diagonal values
+	/**
+	 * @brief Enforce symmetry on rows/columns intersecting a diagonal block
+	 * 
+	 * Averages off‑diagonal elements both inside the block (using `makeBlockSymmetric`)
+	 * and between the block and the rest of the matrix.
+	 * 
+	 * @tparam Width Size of the block
+	 * @param first Starting index
+	 */
 	template <size_t Width>
 	void makeRowColSymmetric(size_t first)
 	{
@@ -246,7 +405,13 @@ public:
 		}
 	}
 
-	// checks if block diagonal is symmetric
+	/**
+	 * @brief Check if a diagonal block is symmetric within tolerance
+	 * @tparam Width Size of the block
+	 * @param first Starting index
+	 * @param eps Tolerance (default 1e-8)
+	 * @return true if block is symmetric
+	 */
 	template <size_t Width>
 	bool isBlockSymmetric(size_t first, const Type eps = Type(1e-8f))
 	{
@@ -268,7 +433,13 @@ public:
 		return true;
 	}
 
-	// checks if rows and columns are symmetric
+	/**
+	 * @brief Check if rows/columns intersecting a diagonal block are symmetric
+	 * @tparam Width Size of the block
+	 * @param first Starting index
+	 * @param eps Tolerance (default 1e-8)
+	 * @return true if the entire intersection is symmetric
+	 */
 	template <size_t Width>
 	bool isRowColSymmetric(size_t first, const Type eps = Type(1e-8f))
 	{
@@ -294,6 +465,11 @@ public:
 		return self.isBlockSymmetric<Width>(first, eps);
 	}
 
+	/**
+	 * @brief Copy lower triangle to upper triangle (make symmetric by copying)
+	 * 
+	 * Overwrites the upper triangle with the corresponding lower triangle values.
+	 */
 	void copyLowerToUpperTriangle()
 	{
 		SquareMatrix<Type, M> &self = *this;
@@ -305,6 +481,11 @@ public:
 		}
 	}
 
+	/**
+	 * @brief Copy upper triangle to lower triangle (make symmetric by copying)
+	 * 
+	 * Overwrites the lower triangle with the corresponding upper triangle values.
+	 */
 	void copyUpperToLowerTriangle()
 	{
 		SquareMatrix<Type, M> &self = *this;
@@ -317,10 +498,29 @@ public:
 	}
 };
 
+// -----------------------------------------------------------------------------
+// Common type aliases
+// -----------------------------------------------------------------------------
+
+/** @brief 2×2 square matrix with float elements */
 using SquareMatrix2f = SquareMatrix<float, 2>;
+
+/** @brief 3×3 square matrix with float elements */
 using SquareMatrix3f = SquareMatrix<float, 3>;
+
+/** @brief 3×3 square matrix with double elements */
 using SquareMatrix3d = SquareMatrix<double, 3>;
 
+// -----------------------------------------------------------------------------
+// Global utility functions
+// -----------------------------------------------------------------------------
+
+/**
+ * @brief Create an identity matrix of size M×M
+ * @tparam Type Element type
+ * @tparam M Matrix dimension
+ * @return Identity matrix
+ */
 template<typename Type, size_t M>
 SquareMatrix<Type, M> eye()
 {
@@ -329,6 +529,13 @@ SquareMatrix<Type, M> eye()
 	return m;
 }
 
+/**
+ * @brief Create a diagonal matrix from a vector
+ * @tparam Type Element type
+ * @tparam M Matrix dimension
+ * @param d Vector of length M containing diagonal entries
+ * @return Diagonal matrix with the given diagonal
+ */
 template<typename Type, size_t M>
 SquareMatrix<Type, M> diag(Vector<Type, M> d)
 {
@@ -341,6 +548,17 @@ SquareMatrix<Type, M> diag(Vector<Type, M> d)
 	return m;
 }
 
+/**
+ * @brief Compute matrix exponential using truncated Taylor series
+ * 
+ * Approximates exp(A) = I + A + A^2/2! + A^3/3! + ... up to the given order.
+ * 
+ * @tparam Type Element type
+ * @tparam M Matrix dimension
+ * @param A Input matrix
+ * @param order Number of terms (excluding the identity term). Default 5.
+ * @return Approximated matrix exponential
+ */
 template<typename Type, size_t M>
 SquareMatrix<Type, M> expm(const Matrix<Type, M, M> &A, size_t order = 5)
 {
@@ -358,8 +576,16 @@ SquareMatrix<Type, M> expm(const Matrix<Type, M, M> &A, size_t order = 5)
 	return res;
 }
 
+// -----------------------------------------------------------------------------
+// Matrix inversion (specialised for 1×1, 2×2, 3×3, and general M)
+// -----------------------------------------------------------------------------
+
 /**
- * Deal with the special case where the square matrix is 1
+ * @brief Invert a 1×1 matrix
+ * @param A Input matrix
+ * @param inv Output inverse (1×1)
+ * @param rank Unused (kept for compatibility)
+ * @return true if invertible (non‑zero element), false otherwise
  */
 template<typename Type>
 bool inv(const SquareMatrix<Type, 1> &A, SquareMatrix<Type, 1> &inv, size_t rank = 1)
@@ -373,7 +599,13 @@ bool inv(const SquareMatrix<Type, 1> &A, SquareMatrix<Type, 1> &inv, size_t rank
 }
 
 /**
- * inverse based on LU factorization with partial pivotting
+ * @brief General matrix inversion using LU decomposition with partial pivoting
+ * @tparam Type Element type
+ * @tparam M Matrix dimension
+ * @param A Input matrix
+ * @param inv Output inverse
+ * @param rank Use only the top‑left rank×rank submatrix (default M)
+ * @return true if inversion succeeded, false if singular
  */
 template<typename Type, size_t M>
 bool inv(const SquareMatrix<Type, M> &A, SquareMatrix<Type, M> &inv, size_t rank = M)
@@ -500,6 +732,12 @@ bool inv(const SquareMatrix<Type, M> &A, SquareMatrix<Type, M> &inv, size_t rank
 	return true;
 }
 
+/**
+ * @brief Optimised inversion for 2×2 matrices
+ * @param A Input 2×2 matrix
+ * @param inv Output inverse
+ * @return true if invertible (determinant not zero), false otherwise
+ */
 template<typename Type>
 bool inv(const SquareMatrix<Type, 2> &A, SquareMatrix<Type, 2> &inv)
 {
@@ -517,6 +755,12 @@ bool inv(const SquareMatrix<Type, 2> &A, SquareMatrix<Type, 2> &inv)
 	return true;
 }
 
+/**
+ * @brief Optimised inversion for 3×3 matrices using adjugate formula
+ * @param A Input 3×3 matrix
+ * @param inv Output inverse
+ * @return true if invertible, false otherwise
+ */
 template<typename Type>
 bool inv(const SquareMatrix<Type, 3> &A, SquareMatrix<Type, 3> &inv)
 {
@@ -542,7 +786,9 @@ bool inv(const SquareMatrix<Type, 3> &A, SquareMatrix<Type, 3> &inv)
 }
 
 /**
- * inverse based on LU factorization with partial pivotting
+ * @brief Inverse that returns a matrix (throws away singularity information)
+ * @param A Input matrix
+ * @return Inverse if invertible, otherwise zero matrix
  */
 template<typename Type, size_t M>
 SquareMatrix<Type, M> inv(const SquareMatrix<Type, M> &A)
@@ -558,10 +804,19 @@ SquareMatrix<Type, M> inv(const SquareMatrix<Type, M> &A)
 	}
 }
 
+// -----------------------------------------------------------------------------
+// Cholesky decomposition and Cholesky inversion
+// -----------------------------------------------------------------------------
+
 /**
- * cholesky decomposition
- *
- * Note: A must be positive definite
+ * @brief Compute the lower‑triangular Cholesky factor L such that A = L * L^T
+ * 
+ * @tparam Type Element type
+ * @tparam M Matrix dimension
+ * @param A Positive‑definite input matrix
+ * @return Lower triangular matrix L (if A is not positive definite, L may contain zeros)
+ * 
+ * @note For indefinite matrices, the decomposition may fail silently (returns L with zeros).
  */
 template<typename Type, size_t M>
 SquareMatrix <Type, M> cholesky(const SquareMatrix<Type, M> &A)
@@ -607,10 +862,14 @@ SquareMatrix <Type, M> cholesky(const SquareMatrix<Type, M> &A)
 }
 
 /**
- * cholesky inverse
- *
- * TODO: Check if gaussian elimination jumps straight to back-substitution
- * for L or we need to do it manually. Will impact speed otherwise.
+ * @brief Compute the inverse of a positive‑definite matrix using Cholesky decomposition
+ * 
+ * Computes A⁻¹ = (L⁻¹)^T * L⁻¹, where A = L * L^T.
+ * 
+ * @tparam Type Element type
+ * @tparam M Matrix dimension
+ * @param A Positive‑definite input matrix
+ * @return Inverse of A (or zero matrix if decomposition fails)
  */
 template<typename Type, size_t M>
 SquareMatrix <Type, M> choleskyInv(const SquareMatrix<Type, M> &A)
@@ -619,8 +878,17 @@ SquareMatrix <Type, M> choleskyInv(const SquareMatrix<Type, M> &A)
 	return L_inv.T() * L_inv;
 }
 
+// -----------------------------------------------------------------------------
+// Additional type aliases for backward compatibility
+// -----------------------------------------------------------------------------
+
+/** @brief 2×2 square matrix (float) – alias for SquareMatrix2f */
 using Matrix2f = SquareMatrix<float, 2>;
+
+/** @brief 3×3 square matrix (float) – alias for SquareMatrix3f */
 using Matrix3f = SquareMatrix<float, 3>;
+
+/** @brief 3×3 square matrix (double) – alias for SquareMatrix3d */
 using Matrix3d = SquareMatrix<double, 3>;
 
 } // namespace matrix
