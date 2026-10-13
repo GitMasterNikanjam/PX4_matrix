@@ -19,6 +19,14 @@ This header is part of the PX4 matrix library and works with `Vector.hpp`, `Matr
 - Depends on `Vector.hpp` (which in turn depends on `Matrix.hpp` and `Slice.hpp`).
 - Standard headers: `<cmath>` (included via `Vector.hpp`).
 
+## Theory
+
+For planar vectors `a=(ax,ay)` and `b=(bx,by)`, the dot product measures
+alignment and the scalar cross product `ax*by-ay*bx` gives signed area. The
+sign of the cross product indicates whether `b` lies counter-clockwise or
+clockwise from `a` under the right-hand convention. The angle can be obtained
+with `atan2(cross,dot)` without normalizing either vector.
+
 ## Quick Start
 
 ```cpp
@@ -192,4 +200,3 @@ Same as the parent matrix library – **BSD 3‑Clause License**.
 - `Vector3.hpp` – 3D vector with 3D cross product (returns vector).
 - `Matrix.hpp` – full matrix class.
 - `helper_functions.hpp` – mathematical utilities (wrapping, comparisons).
-```

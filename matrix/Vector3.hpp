@@ -116,6 +116,7 @@ public:
 	Vector3 cross(const Matrix31 &b) const
 	{
 		const Vector3 &a(*this);
+		// Each component is the corresponding 2x2 minor of the cross product.
 		return {a(1) *b(2, 0) - a(2) *b(1, 0), -a(0) *b(2, 0) + a(2) *b(0, 0), a(0) *b(1, 0) - a(1) *b(0, 0)};
 	}
 
@@ -261,6 +262,8 @@ public:
 	{
 		const Vector3 &v(*this);
 		Dcm<Type> A;
+		// Place the components so multiplying A by another vector yields
+		// v cross that vector, with A's diagonal fixed at zero.
 		A(0, 0) = 0;
 		A(0, 1) = -v(2);
 		A(0, 2) = v(1);

@@ -94,12 +94,10 @@ public:
 	}
 
 	/**
-	 * @brief Construct from a flat array of 4 elements
-	 * @param data_ Array of length 4 [x1, x2, x3, x4]
-	 * 
-	 * @note The parameter is declared as `const Type data_[3]` in the original
-	 *       code, but it should be `[4]`. This is a known issue; treat the array
-	 *       as having at least 4 elements.
+	 * @brief Construct from four contiguous values.
+	 * @param data_ Pointer to at least four values [x1, x2, x3, x4].
+	 * @pre data_ points to at least four readable elements. C++ adjusts the
+	 *      array parameter to a pointer, so its declared bound is not enforced.
 	 */
 	explicit Vector4(const Type data_[3]) :
 		Vector<Type, 4>(data_)
@@ -115,6 +113,7 @@ public:
 	 */
 	Vector4(Type x1, Type x2, Type x3, Type x4)
 	{
+		// Store components in the same order used by the inherited vector API.
 		Vector4 &v(*this);
 		v(0) = x1;
 		v(1) = x2;

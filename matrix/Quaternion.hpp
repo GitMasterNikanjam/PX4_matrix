@@ -1,5 +1,6 @@
 /**
  * @file Quaternion.hpp
+ * @brief Hamilton quaternion representation for 3D rotations.
  *
  * All rotations and axis systems follow the right-hand rule.
  * The Hamilton quaternion convention including its product definition is used.
@@ -43,22 +44,26 @@ template <typename Type>
 class AxisAngle;
 
 /**
- * Quaternion class
+ * @brief Unit-quaternion representation of a three-dimensional rotation.
  *
  * The rotation between two coordinate frames is
- * described by this class.
+ * described by this class. Components are stored as (real, i, j, k), and
+ * products follow the Hamilton convention documented above.
+ * @tparam Type Floating-point scalar type.
  */
 template<typename Type>
 class Quaternion : public Vector4<Type>
 {
 public:
+	/** Four-element column matrix used for quaternion values. */
 	using Matrix41 = Matrix<Type, 4, 1>;
+	/** Three-element column matrix used for angular rates. */
 	using Matrix31 = Matrix<Type, 3, 1>;
 
 	/**
-	 * Constructor from array
+	 * @brief Construct from four contiguous components (real, i, j, k).
 	 *
-	 * @param data_ array
+	 * @param data_ Pointer to at least four values.
 	 */
 	explicit Quaternion(const Type data_[4]) :
 		Vector4<Type>(data_)
@@ -66,7 +71,7 @@ public:
 	}
 
 	/**
-	 * Standard constructor
+	 * @brief Construct the identity rotation quaternion (1, 0, 0, 0).
 	 */
 	Quaternion()
 	{
@@ -78,9 +83,9 @@ public:
 	}
 
 	/**
-	 * Constructor from Matrix41
+	 * @brief Construct from a four-element column matrix.
 	 *
-	 * @param other Matrix41 to copy
+	 * @param other Source matrix in (real, i, j, k) order.
 	 */
 	Quaternion(const Matrix41 &other) :
 		Vector4<Type>(other)
@@ -88,18 +93,20 @@ public:
 	}
 
 	/**
-	 * Constructor from dcm
+	 * @brief Convert a direction cosine matrix to a quaternion.
 	 *
 	 * Instance is initialized from a dcm representing coordinate transformation
 	 * from frame 2 to frame 1.
 	 *
-	 * @param dcm dcm to set quaternion to
+	 * @param R Direction cosine matrix representing the rotation.
 	 */
 	Quaternion(const Dcm<Type> &R)
 	{
 		Quaternion &q = *this;
 		Type t = R.trace();
 
+		// The trace-positive branch is well-conditioned when the real component
+		// is largest; otherwise select the largest diagonal component below.
 		if (t > Type(0)) {
 			t = std::sqrt(Type(1) + t);
 			q(0) = Type(0.5) * t;
@@ -135,17 +142,18 @@ public:
 	}
 
 	/**
-	 * Constructor from euler angles
+	 * @brief Construct from 3-2-1 intrinsic Tait-Bryan angles.
 	 *
 	 * This sets the instance to a quaternion representing coordinate transformation from
 	 * frame 2 to frame 1 where the rotation from frame 1 to frame 2 is described
 	 * by a 3-2-1 intrinsic Tait-Bryan rotation sequence.
 	 *
-	 * @param euler euler angle instance
+	 * @param euler Source Euler angles.
 	 */
 	Quaternion(const Euler<Type> &euler)
 	{
 		Quaternion &q = *this;
+		// Half-angle products encode the intrinsic yaw, pitch, then roll sequence.
 		Type cosPhi_2 = Type(std::cos(euler.phi() / Type(2)));
 		Type cosTheta_2 = Type(std::cos(euler.theta() / Type(2)));
 		Type cosPsi_2 = Type(std::cos(euler.psi() / Type(2)));
@@ -163,9 +171,9 @@ public:
 	}
 
 	/**
-	 * Quaternion from AxisAngle
+	 * @brief Construct from an axis-angle rotation vector.
 	 *
-	 * @param aa axis-angle vector
+	 * @param aa Rotation vector; its norm is the angle in radians.
 	 */
 	Quaternion(const AxisAngle<Type> &aa)
 	{
@@ -201,9 +209,8 @@ public:
 		const float dt = src.dot(dst);
 
 		if (cr.norm() < eps && dt < 0) {
-			// handle corner cases with 180 degree rotations
-			// if the two vectors are parallel, cross product is zero
-			// if they point opposite, the dot product is negative
+			// For antiparallel vectors, the cross product is zero and does not
+			// identify a rotation axis. Choose a stable perpendicular direction.
 			cr = src.abs();
 
 			if (cr(0) < cr(1)) {
@@ -227,7 +234,8 @@ public:
 			cr = src.cross(cr);
 
 		} else {
-			// normal case, do half-way quaternion solution
+			// In the general case, the half-way quaternion avoids explicitly
+			// computing the angle; normalize below to obtain a unit quaternion.
 			q(0) = dt + std::sqrt(src.norm_squared() * dst.norm_squared());
 		}
 
@@ -238,7 +246,7 @@ public:
 	}
 
 	/**
-	 * Constructor from quaternion values
+	 * @brief Construct from explicit (real, i, j, k) components.
 	 *
 	 * Instance is initialized from quaternion values representing coordinate
 	 * transformation from frame 2 to frame 1.
@@ -259,10 +267,10 @@ public:
 	}
 
 	/**
-	 * Quaternion multiplication operator
+	 * @brief Multiply quaternions using the Hamilton product.
 	 *
-	 * @param q quaternion to multiply with
-	 * @return product
+	 * @param p Right-hand quaternion.
+	 * @return Product representing the composed rotations.
 	 */
 	Quaternion operator*(const Quaternion &p) const
 	{
@@ -275,9 +283,9 @@ public:
 	}
 
 	/**
-	 * Self-multiplication operator
+	 * @brief Compose with another quaternion in place.
 	 *
-	 * @param other quaternion to multiply with
+	 * @param other Right-hand quaternion.
 	 */
 	void operator*=(const Quaternion &other)
 	{
@@ -286,10 +294,10 @@ public:
 	}
 
 	/**
-	 * Scalar multiplication operator
+	 * @brief Scale all four quaternion components.
 	 *
-	 * @param scalar scalar to multiply with
-	 * @return product
+	 * @param scalar Scale factor.
+	 * @return Scaled quaternion.
 	 */
 	Quaternion operator*(Type scalar) const
 	{
@@ -298,9 +306,9 @@ public:
 	}
 
 	/**
-	 * Scalar self-multiplication operator
+	 * @brief Scale all components in place.
 	 *
-	 * @param scalar scalar to multiply with
+	 * @param scalar Scale factor.
 	 */
 	void operator*=(Type scalar)
 	{
@@ -309,12 +317,14 @@ public:
 	}
 
 	/**
+	 * @brief Compute quaternion derivative for angular rate expressed in frame 1.
+	 *
 	 * Computes the derivative of q_21 when
 	 * rotated with angular velocity expressed in frame 1
 	 * v_2 = q_21 * v_1 * q_21^-1
 	 * d/dt q_21 = 0.5 * q_21 * omega_2
 	 *
-	 * @param w angular rate in frame 1 (typically body frame)
+	 * @param w Angular rate expressed in frame 1, in radians per second.
 	 */
 	Matrix41 derivative1(const Matrix31 &w) const
 	{
@@ -324,12 +334,14 @@ public:
 	}
 
 	/**
+	 * @brief Compute quaternion derivative for angular rate expressed in frame 2.
+	 *
 	 * Computes the derivative of q_21 when
 	 * rotated with angular velocity expressed in frame 2
 	 * v_2 = q_21 * v_1 * q_21^-1
 	 * d/dt q_21 = 0.5 * omega_1 * q_21
 	 *
-	 * @param w angular rate in frame 2 (typically reference frame)
+	 * @param w Angular rate expressed in frame 2, in radians per second.
 	 */
 	Matrix41 derivative2(const Matrix31 &w) const
 	{
@@ -339,6 +351,8 @@ public:
 	}
 
 	/**
+	  * @brief Compute the quaternion exponential of a three-dimensional vector.
+	  *
 	  * Computes the quaternion exponential of the 3D vector u
 	  * as proposed in
 	  * [1] Sveier A, Sjøberg AM, Egeland O. "Applied Runge–Kutta–Munthe-Kaas Integration
@@ -356,7 +370,7 @@ public:
 	  * which is a more robust update.
 	  * A re-normalization step might necessary with both methods.
 	  *
-	  * @param u 3D vector u
+	  * @param u Rotation vector in radians.
 	  */
 	static Quaternion expq(const Vector3<Type> &u)
 	{
@@ -372,15 +386,18 @@ public:
 		Type sinc_u, cos_u;
 
 		if (u_norm < tol) {
+			// Near zero, evaluate sinc and cosine as even Taylor polynomials to
+			// avoid loss of precision from sin(u_norm) / u_norm.
 			Type u2 = u_norm * u_norm;
 			Type u4 = u2 * u2;
 			Type u6 = u4 * u2;
 
-			// compute the first 4 terms of the Taylor serie
+			// Retain terms through sixth order in the small-angle expansion.
 			sinc_u = Type(1.0) - u2 * c3 + u4 * c5 - u6 * c7;
 			cos_u = Type(1.0) - u2 * c2 + u4 * c4 - u6 * c6;
 
 		} else {
+			// Away from zero, direct trigonometric evaluation is well-conditioned.
 			sinc_u = Type(std::sin(u_norm) / u_norm);
 			cos_u = Type(std::cos(u_norm));
 		}
@@ -389,7 +406,10 @@ public:
 		return Quaternion<Type> (cos_u, v(0), v(1), v(2));
 	}
 
-	/** inverse right Jacobian of the quaternion logarithm u
+	/**
+	 * @brief Compute the inverse right Jacobian associated with rotation vector u.
+	 *
+	 * This is the inverse right Jacobian of the quaternion logarithm u
 	  * equation (20) in reference
 	  * [1] Sveier A, Sjøberg AM, Egeland O. "Applied Runge–Kutta–Munthe-Kaas Integration
 	  *     for the Quaternion Kinematics".Journal of Guidance, Control, and Dynamics. 2019
@@ -397,7 +417,7 @@ public:
 	  * This can be used to update a quaternion kinematic cleanly
 	  * with higher order integration methods (like RK4) on the quaternion logarithm u.
 	  *
-	  * @param u 3D vector u
+	  * @param u Rotation vector in radians.
 	  */
 	static Dcm<Type> inv_r_jacobian(const Vector3<Type> &u)
 	{
@@ -405,7 +425,7 @@ public:
 		Type u_norm = u.norm();
 		Dcm<Type> u_hat = u.hat();
 
-		if (u_norm < tol) { 	// result smaller than O(||.||^3)
+		if (u_norm < tol) { 	// Use the small-angle series to avoid cancellation.
 			return Type(0.5) * (Dcm<Type>() + u_hat + (Type(1.0 / 3.0) + u_norm * u_norm / Type(45.0)) * u_hat * u_hat);
 
 		} else {
@@ -415,7 +435,7 @@ public:
 	}
 
 	/**
-	 * Invert quaternion in place
+	 * @brief Replace this quaternion with its multiplicative inverse.
 	 */
 	void invert()
 	{
@@ -423,9 +443,10 @@ public:
 	}
 
 	/**
-	 * Invert quaternion
+	 * @brief Return the multiplicative inverse of this quaternion.
 	 *
-	 * @return inverted quaternion
+	 * @return Conjugate divided by squared norm.
+	 * @pre The quaternion must be non-zero.
 	 */
 	Quaternion inversed() const
 	{
@@ -439,7 +460,7 @@ public:
 	}
 
 	/**
-	 * Bring quaternion to canonical form
+	 * @brief Replace this quaternion with its canonical-sign form.
 	 */
 	void canonicalize()
 	{
@@ -447,9 +468,9 @@ public:
 	}
 
 	/**
-	 * Return canonical form of the quaternion
+	 * @brief Return a sign-canonical form of this quaternion.
 	 *
-	 * @return quaternion in canonical from
+	 * @return Equivalent quaternion whose first significant component is positive.
 	 */
 	Quaternion canonical() const
 	{
@@ -465,9 +486,9 @@ public:
 	}
 
 	/**
-	 * Rotate quaternion from rotation vector
+	 * @brief Left-compose this quaternion with a rotation-vector increment.
 	 *
-	 * @param vec rotation vector
+	 * @param vec Rotation increment to apply.
 	 */
 	void rotate(const AxisAngle<Type> &vec)
 	{
@@ -476,13 +497,15 @@ public:
 	}
 
 	/**
+	 * @brief Rotate a vector from frame 1 into frame 2.
+	 *
 	 * Rotates vector v_1 in frame 1 to vector v_2 in frame 2
 	 * using the rotation quaternion q_21
 	 * describing the rotation from frame 1 to 2
 	 * v_2 = q_21 * v_1 * q_21^-1
 	 *
-	 * @param vec vector to rotate in frame 1 (typically body frame)
-	 * @return rotated vector in frame 2 (typically reference frame)
+	 * @param vec Vector expressed in frame 1.
+	 * @return Rotated vector expressed in frame 2.
 	 */
 	Vector3<Type> rotateVector(const Vector3<Type> &vec) const
 	{
@@ -493,13 +516,15 @@ public:
 	}
 
 	/**
+	 * @brief Rotate a vector from frame 2 back into frame 1.
+	 *
 	 * Rotates vector v_2 in frame 2 to vector v_1 in frame 1
 	 * using the rotation quaternion q_21
 	 * describing the rotation from frame 1 to 2
 	 * v_1 = q_21^-1 * v_2 * q_21
 	 *
-	 * @param vec vector to rotate in frame 2 (typically reference frame)
-	 * @return rotated vector in frame 1 (typically body frame)
+	 * @param vec Vector expressed in frame 2.
+	 * @return Rotated vector expressed in frame 1.
 	 */
 	Vector3<Type> rotateVectorInverse(const Vector3<Type> &vec) const
 	{
@@ -510,7 +535,7 @@ public:
 	}
 
 	/**
-	 * Imaginary components of quaternion
+	 * @brief Return the three imaginary components as a vector.
 	 */
 	Vector3<Type> imag() const
 	{
@@ -519,11 +544,14 @@ public:
 	}
 
 	/**
+	 * @brief Return the body Z axis expressed in the reference frame.
+	 *
 	 * Corresponding body z-axis to an attitude quaternion /
 	 * last orthogonal unit basis vector
 	 *
 	 * == last column of the equivalent rotation matrix
-	 * but calculated more efficiently than a full conversion
+	 * but calculated more efficiently than a full conversion.
+	 * @return Unit direction vector for the rotated body Z axis.
 	 */
 	Vector3<Type> dcm_z() const
 	{
@@ -540,10 +568,14 @@ public:
 	}
 };
 
+/** Single-precision quaternion type (short alias). */
 using Quatf = Quaternion<float>;
+/** Single-precision quaternion type. */
 using Quaternionf = Quaternion<float>;
 
+/** Double-precision quaternion type (short alias). */
 using Quatd = Quaternion<double>;
+/** Double-precision quaternion type. */
 using Quaterniond = Quaternion<double>;
 
 } // namespace matrix

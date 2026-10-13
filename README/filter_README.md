@@ -58,6 +58,21 @@ int main() {
 }
 ```
 
+## Theory
+
+For a linear measurement model `z = Cx + noise`, the innovation is
+`r = z - C x_prior`. Its covariance is `S = C P Cᵀ + R`. The Kalman gain
+weights the innovation according to uncertainty, giving `dx = K r`. The
+returned `beta = rᵀ S⁻¹ r` is a scalar consistency statistic; under a valid
+Gaussian model it follows a chi-square distribution with `N` degrees of
+freedom.
+
+The implementation returns a covariance delta, not the updated covariance:
+`dP = -K C P`, so the caller computes `P_new = P + dP`. This is the simplified
+covariance update and can lose symmetry or positive semidefiniteness through
+floating-point roundoff. The caller should apply any required numerical
+covariance safeguards.
+
 ## API Reference
 
 ### Function `kalman_correct`
@@ -88,7 +103,7 @@ int kalman_correct(
 | `beta` | Output: normalised innovation squared = `rᵀ·S⁻¹·r`. Under Gaussian assumptions, `beta` is `χ²(N)`‑distributed. |
 
 **Returns**:
-- Always `0` (success). If the innovation covariance `S` is singular, the result may contain `NaN`.
+- Always `0`; the return value does not indicate whether inversion succeeded.
 
 **Mathematical definition**:
 ```
@@ -131,9 +146,9 @@ if (beta > chi2_99) {
 
 ## Important Notes
 
-1. **Invertibility** – The function computes `S_I = S⁻¹` using `SquareMatrix<I>()`. If `S` is not invertible, the result will contain `NaN`. The caller must ensure that `R` is positive definite and `C·P·Cᵀ + R` is invertible.
+1. **Invertibility** – The function obtains `S⁻¹` through `SquareMatrix::I()`. That convenience method returns a zero matrix on inversion failure, so `dx`, `dP`, and `beta` may look finite while being invalid. The caller must ensure that `S = C·P·Cᵀ + R` is invertible.
 
-2. **Covariance update** – The function returns `dP` such that `P_new = P + dP`. This is equivalent to the Joseph form `P_new = (I - K·C) · P`.
+2. **Covariance update** – The function returns `dP` such that `P_new = P + dP = (I - K·C)P`. This is the simplified update; it is not the Joseph-form implementation.
 
 3. **No state or time propagation** – This file only contains the correction step. The prediction step (time update) must be implemented elsewhere.
 
@@ -160,4 +175,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `SquareMatrix.hpp` – for `inv()` and matrix operations.
 - `Scalar.hpp` – for scalar‑matrix conversions.
 - `PseudoInverse.hpp` – for pseudo‑inverse in case of singular `S`.
-```

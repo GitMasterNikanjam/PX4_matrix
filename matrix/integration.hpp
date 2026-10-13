@@ -45,6 +45,7 @@ namespace matrix
  * @param h0 Fixed step size (the actual step will be min(h0, remaining time))
  * @param[out] y1 Final state vector at time tf (size M×1)
  * @return 0 on success, -1 if tf < t0 (invalid time interval)
+ * @pre h0 > 0. A non-positive step cannot advance the integration loop.
  * 
  * @note The function uses a simple while‑loop and applies the RK4 formula:
  *       k1 = f(t, y, u)
@@ -85,15 +86,19 @@ int integrate_rk4(
 	Matrix<Type, M, 1> &y1
 )
 {
-	// https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
+	// Keep the current time separate from the output state; each step updates
+	// both until the endpoint is reached.
 	Type t1 = t0;
 	y1 = y0;
 	Type h = h0;
 	Vector<Type, M> k1, k2, k3, k4;
 
-	if (tf < t0) { return -1; } // make sure t1 > t0
+	// A zero-length interval is valid and returns y0 unchanged. Backward
+	// integration is not supported by this fixed-positive-step routine.
+	if (tf < t0) { return -1; }
 
 	while (t1 < tf) {
+		// Shorten only the final step so accumulated steps end exactly at tf.
 		if (t1 + h0 < tf) {
 			h = h0;
 
@@ -101,6 +106,8 @@ int integrate_rk4(
 			h = tf - t1;
 		}
 
+		// Evaluate the slope at the beginning, two midpoint estimates, and end.
+		// Their weighted average gives fourth-order accuracy for smooth ODEs.
 		k1 = f(t1, y1, u);
 		k2 = f(t1 + h / 2, y1 + k1 * h / 2, u);
 		k3 = f(t1 + h / 2, y1 + k2 * h / 2, u);

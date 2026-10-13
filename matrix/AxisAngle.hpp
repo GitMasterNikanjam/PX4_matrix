@@ -1,5 +1,6 @@
 /**
  * @file AxisAngle.hpp
+ * @brief Axis-angle rotation representation.
  *
  * @author James Goppert <james.goppert@gmail.com>
  */
@@ -11,17 +12,21 @@
 namespace matrix
 {
 
+/** Forward declaration of the 3-2-1 Euler-angle representation. */
 template <typename Type>
 class Euler;
 
+/** Forward declaration of the quaternion rotation representation. */
 template<typename Type>
 class Quaternion;
 
 /**
- * AxisAngle class
+ * @brief Rotation vector whose direction is the rotation axis and length is
+ * the rotation angle in radians.
  *
- * The rotation between two coordinate frames is
- * described by this class.
+ * A zero vector represents no rotation. The class inherits Vector3 so the
+ * three components are available through the usual vector interface.
+ * @tparam Type Floating-point scalar type.
  */
 template<typename Type>
 class AxisAngle : public Vector3<Type>
@@ -30,9 +35,9 @@ public:
 	using Matrix31 = Matrix<Type, 3, 1>;
 
 	/**
-	 * Constructor from array
+	 * @brief Construct from three row-major axis-angle components.
 	 *
-	 * @param data_ array
+	 * @param data_ Pointer to three values [rx*angle, ry*angle, rz*angle].
 	 */
 	explicit AxisAngle(const Type data_[3]) :
 		Vector3<Type>(data_)
@@ -40,14 +45,14 @@ public:
 	}
 
 	/**
-	 * Standard constructor
+	 * @brief Construct the zero rotation.
 	 */
 	AxisAngle() = default;
 
 	/**
-	 * Constructor from Matrix31
+	 * @brief Construct from a three-element column matrix.
 	 *
-	 * @param other Matrix31 to copy
+	 * @param other Source 3x1 matrix.
 	 */
 	AxisAngle(const Matrix31 &other) :
 		Vector3<Type>(other)
@@ -55,34 +60,40 @@ public:
 	}
 
 	/**
-	 * Constructor from quaternion
+	 * @brief Convert a quaternion to an axis-angle rotation vector.
 	 *
 	 * This sets the instance from a quaternion representing coordinate transformation from
 	 * frame 2 to frame 1 where the rotation from frame 1 to frame 2 is described
 	 * by a 3-2-1 intrinsic Tait-Bryan rotation sequence.
 	 *
-	 * @param q quaternion
+	 * @param q Quaternion describing the rotation.
 	 */
 	AxisAngle(const Quaternion<Type> &q)
 	{
 		AxisAngle &v = *this;
+		// The quaternion vector part is axis * sin(angle/2); its norm recovers
+		// the half-angle sine and its direction is the rotation axis.
 		Type mag = q.imag().norm();
 
 		if (std::fabs(mag) >= Type(1e-10)) {
+			// atan2 remains well-conditioned near zero rotation; scale the
+			// quaternion vector so the resulting vector length is the full angle.
 			v = q.imag() * Type(Type(2) * std::atan2(mag, q(0)) / mag);
 
 		} else {
+			// Near zero, avoid division by a tiny magnitude and retain the
+			// quaternion's sign convention for the limiting rotation vector.
 			v = q.imag() * Type(Type(2) * Type(sign(q(0))));
 		}
 	}
 
 	/**
-	 * Constructor from dcm
+	 * @brief Construct from a direction cosine matrix.
 	 *
 	 * Instance is initialized from a dcm representing coordinate transformation
 	 * from frame 2 to frame 1.
 	 *
-	 * @param dcm dcm to set quaternion to
+	 * @param dcm Direction cosine matrix describing the rotation.
 	 */
 	AxisAngle(const Dcm<Type> &dcm)
 	{
@@ -91,13 +102,13 @@ public:
 	}
 
 	/**
-	 * Constructor from euler angles
+	 * @brief Construct from 3-2-1 intrinsic Euler angles.
 	 *
 	 * This sets the instance to a quaternion representing coordinate transformation from
 	 * frame 2 to frame 1 where the rotation from frame 1 to frame 2 is described
 	 * by a 3-2-1 intrinsic Tait-Bryan rotation sequence.
 	 *
-	 * @param euler euler angle instance
+	 * @param euler Source Euler-angle rotation.
 	 */
 	AxisAngle(const Euler<Type> &euler)
 	{
@@ -106,11 +117,11 @@ public:
 	}
 
 	/**
-	 * Constructor from 3 axis angle values (unit vector * angle)
+	 * @brief Construct directly from rotation-vector components.
 	 *
-	 * @param x r_x*angle
-	 * @param y r_y*angle
-	 * @param z r_z*angle
+	 * @param x Rotation-vector component on X, in radians.
+	 * @param y Rotation-vector component on Y, in radians.
+	 * @param z Rotation-vector component on Z, in radians.
 	 */
 	AxisAngle(Type x, Type y, Type z)
 	{
@@ -121,15 +132,15 @@ public:
 	}
 
 	/**
-	 * Constructor from axis and angle
+	 * @brief Construct from an axis and an angle.
 	 *
-	 * @param axis An axis of rotation, normalized if not unit length
-	 * @param angle The amount to rotate
+	 * @param axis Rotation axis; normalized by this constructor.
+	 * @param angle Rotation angle in radians.
 	 */
 	AxisAngle(const Matrix31 &axis_, Type angle_)
 	{
 		AxisAngle &v = *this;
-		// make sure axis is a unit vector
+		// Normalize before scaling so the vector length equals the angle.
 		Vector3<Type> a = axis_;
 		a = a.unit();
 		v(0) = a(0) * angle_;
@@ -138,8 +149,10 @@ public:
 	}
 
 
+	/** @brief Return the unit rotation axis (X axis for the zero rotation). */
 	Vector3<Type> axis()
 	{
+		// A zero rotation has no unique axis; use the documented X-axis default.
 		if (Vector3<Type>::norm() > 0) {
 			return Vector3<Type>::unit();
 
@@ -148,13 +161,17 @@ public:
 		}
 	}
 
+	/** @brief Return the rotation angle in radians, in the range [0, pi] for
+	 * rotations produced by a normalized quaternion. */
 	Type angle()
 	{
 		return Vector3<Type>::norm();
 	}
 };
 
+/** Single-precision axis-angle rotation. */
 using AxisAnglef = AxisAngle<float>;
+/** Double-precision axis-angle rotation. */
 using AxisAngled = AxisAngle<double>;
 
 } // namespace matrix

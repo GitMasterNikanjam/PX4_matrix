@@ -18,6 +18,14 @@ This header is part of the PX4 matrix library and works with `Vector.hpp`, `Matr
 - Depends on `Vector.hpp` (which in turn depends on `Matrix.hpp` and `Slice.hpp`).
 - Standard headers: `<cmath>` (included via `Vector.hpp`).
 
+## Theory
+
+`Vector4` provides fixed-size four-component arithmetic and inherits the
+Euclidean norm and dot product from `Vector`. It does not assign a special
+geometric meaning to its components; applications commonly use it for
+quaternions or homogeneous coordinates. The quaternion class should be used
+when rotation-specific operations and component conventions are needed.
+
 ## Quick Start
 
 ```cpp
@@ -61,7 +69,7 @@ int main() {
 |-------------|-------------|
 | `Vector4()` | Zero‑initialised (x1=0, x2=0, x3=0, x4=0). |
 | `Vector4(const Matrix41 &other)` | Copy from a 4×1 matrix. |
-| `explicit Vector4(const Type data[3])` | **Note:** parameter declared as `[3]` in the original code, but expects 4 elements – treat array as having at least 4 elements. |
+| `explicit Vector4(const Type data[3])` | Reads four contiguous values; provide a pointer to at least four elements. The parameter's array bound decays to a pointer and does not enforce the size. |
 | `Vector4(Type x1, Type x2, Type x3, Type x4)` | From four scalar components. |
 | `template<size_t P,size_t Q> Vector4(const Slice<Type,4,1,P,Q>&)` | From mutable column slice (4×1). |
 | `template<size_t P,size_t Q> Vector4(const Slice<Type,1,4,P,Q>&)` | From mutable row slice (1×4) – converts to column vector. |
@@ -129,7 +137,7 @@ Vector4f v_row(row_slice);          // converts row to column vector
 
 1. **Column vector** – all operations follow matrix algebra.
 2. **Arithmetic operators return `Vector4`** – not the base `Matrix` type, so you can chain operations without manual casting.
-3. **Array constructor quirk** – the parameter is declared as `const Type data_[3]` in the original code, but the constructor expects 4 elements. This is likely a typo; treat the array as having at least 4 elements.
+3. **Array constructor precondition** – the constructor reads four values even though its parameter is written with a `[3]` bound. Provide at least four elements.
 4. **Inherited methods** – all methods from `Vector<Type,4>` (and `Matrix<Type,4,1>`) are available, including:
    - `norm()`, `norm_squared()`, `longerThan()`
    - `dot()`, `unit()`, `unit_or_zero()`
@@ -159,4 +167,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see copyright 
 - `Vector3.hpp` – 3D vector with vector cross product and hat matrix.
 - `Matrix.hpp` – full matrix class.
 - `helper_functions.hpp` – mathematical utilities (wrapping, comparisons).
-```

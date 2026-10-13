@@ -147,4 +147,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Dcm.hpp` – 3D direction cosine matrix.
 - `SquareMatrix.hpp` – generic square matrix operations.
 - `Vector2.hpp` – 2‑element column vector.
-```

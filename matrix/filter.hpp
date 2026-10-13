@@ -53,15 +53,18 @@ namespace matrix
  * @param[out] dP Computed covariance update (M×M) – after correction: P_new = P + dP
  * @param[out] beta Normalised innovation squared (scalar) – a chi‑square test statistic
  * 
- * @return 0 on success (always succeeds, but may produce NaN if inversion fails)
+ * @return Always 0; this routine does not report inversion failure separately.
  * 
- * @note This function does not check for positive definiteness or invertibility;
- *       if S is singular, the result will be invalid (NaNs). The caller must ensure
- *       that R is positive definite and C*P*C^T + R is invertible.
+ * @note This function does not check positive definiteness or inversion success.
+ *       If S is singular, the matrix inverse helper returns its failure value and
+ *       the computed correction and statistic are not meaningful. The caller is
+ *       responsible for ensuring that S = C*P*C^T + R is invertible.
  * 
- * @warning The covariance update uses the Joseph form equivalent: 
- *          P_new = (I - K*C) * P. Here we return dP = -K*C*P so that
- *          P_new = P + dP. This is valid for the standard Kalman gain.
+ * @warning The covariance update uses the simplified form
+ *          P_new = (I - K*C) * P. This is algebraically equivalent to the
+ *          Joseph form for the exact Kalman gain, but can be less robust to
+ *          floating-point roundoff. Symmetrize or use the Joseph form if the
+ *          application requires stronger covariance numerical safeguards.
  * 
  * @see Scalar, SquareMatrix
  */
@@ -76,10 +79,15 @@ int kalman_correct(
 	Type &beta
 )
 {
+	// Innovation covariance: combine measurement uncertainty with projected
+	// state uncertainty, then invert it for the gain and residual statistic.
 	SquareMatrix<Type, N> S_I = SquareMatrix<Type, N>(C * P * C.T() + R).I();
+	// The Kalman gain maps measurement-space residuals into state corrections.
 	Matrix<Type, M, N> K = P * C.T() * S_I;
 	dx = K * r;
+	// The normalized innovation squared is the residual's Mahalanobis distance.
 	beta = Scalar<Type>(r.T() * S_I * r);
+	// Return only the covariance delta so callers can apply P_new = P + dP.
 	dP = K * C * P * (-1);
 	return 0;
 }

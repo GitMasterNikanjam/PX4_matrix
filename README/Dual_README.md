@@ -21,6 +21,15 @@ This class is inspired by Ceres Solver’s `Jet` type and the techniques describ
 - Depends on `Scalar.hpp` and `Vector.hpp` from the same library.
 - Standard headers: `<cmath>`.
 
+## Theory
+
+A dual number stores `v + ε d` where `ε² = 0`. For a function `f`, evaluating
+it with a seeded dual propagates the derivative by the chain rule, so the
+result contains both `f(x)` and its derivative without finite differences.
+With `N` independent variables, the derivative vector has `N` components.
+This is forward-mode automatic differentiation and is most efficient when the
+number of inputs is small relative to the number of outputs.
+
 ## Quick Start
 
 ```cpp
@@ -183,4 +192,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Jet` class in Ceres Solver (inspiration).
 - `Vector.hpp` – for the derivative vector type.
 - `Matrix.hpp` – for building Jacobians.
-```

@@ -56,6 +56,14 @@ int main() {
 }
 ```
 
+## Theory
+
+RK4 approximates the integral of `dy/dt = f(t,y,u)` over one step by sampling
+the derivative at the start, twice at estimated midpoints, and at the end. The
+weighted combination cancels lower-order local error terms, giving fourth-order
+global accuracy for smooth systems as the step size is reduced. Each step calls
+the derivative function four times.
+
 ## API Reference
 
 ### Function `integrate_rk4`
@@ -81,8 +89,8 @@ int integrate_rk4(
 | `y0` | Initial state vector at time `t0` (size `M×1`). |
 | `u` | Constant input vector (size `N×1`). Assumed constant over the whole interval. |
 | `t0` | Initial time. |
-| `tf` | Final time (must be > `t0`). |
-| `h0` | Fixed step size. The actual step is `min(h0, remaining time)`. |
+| `tf` | Final time; must be greater than or equal to `t0`. |
+| `h0` | Positive fixed step size. The actual final step is shortened to reach `tf`. |
 | `y1` | Output: final state vector at time `tf`. |
 
 **Returns**:
@@ -113,7 +121,9 @@ Vector<double,2> damped_osc(double t, const Matrix<double,2,1>& y, const Matrix<
 }
 
 int main() {
-    Vector<double,2> y0(1.0, 0.0);
+    Vector<double,2> y0;
+    y0(0) = 1.0;
+    y0(1) = 0.0;
     Vector<double,1> u; u(0) = 0.1;   // damping
     Vector<double,2> yf;
     integrate_rk4(damped_osc, y0, u, 0.0, 10.0, 0.01, yf);
@@ -137,10 +147,10 @@ Vector<float,2> my_ode(float t, const Matrix<float,2,1>& y, const Matrix<float,1
 ## Important Notes
 
 - **Constant input** – The function signature includes `u` but the integrator does not modify it; it simply passes the same `u` to every evaluation of `f`. This is efficient for systems where the input is truly constant over the integration interval.
-- **Step size** – The integrator uses a fixed step `h0` except for the last step, which is shortened to land exactly on `tf`. Adaptive step size is not provided.
+- **Step size** – `h0` must be positive. A zero or negative step cannot advance the loop. The integrator uses `h0` except for the last step, which is shortened to land exactly on `tf`. Adaptive step size is not provided.
 - **Accuracy** – RK4 has local truncation error `O(h⁵)` and global error `O(h⁴)`. For many problems it is sufficiently accurate; for stiff ODEs you may need implicit methods.
 - **Performance** – Each step evaluates `f` four times. For high‑dimensional systems or very many steps, consider alternative integrators.
-- **Return value** – The function returns `-1` only if `tf < t0`. It does **not** check for numerical issues (e.g., NaN, Inf) inside `f`.
+- **Return value** – The function returns `-1` if `tf < t0`; `tf == t0` is a valid zero-duration interval and returns the initial state. It does **not** check for numerical issues (e.g., NaN, Inf) inside `f`.
 
 ## Dependencies
 
@@ -160,4 +170,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Vector.hpp` – dense vector class.
 - `Matrix.hpp` – dense matrix class (used for state and input).
 - `helper_functions.hpp` – utilities like `isEqualF` (not used here).
-```

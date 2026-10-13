@@ -31,6 +31,13 @@ This file is part of the PX4 matrix library and works together with `Matrix.hpp`
 - Depends on `Matrix.hpp` and `Slice.hpp`.
 - Standard headers: `<cmath>`, `<cassert>` (included via `Matrix.hpp`).
 
+## Theory
+
+`Vector<Type, M>` is a column matrix with `M` elements. The dot product is
+`aᵀb`; the Euclidean norm is `sqrt(aᵀa)`. Normalization divides each element
+by that norm and therefore requires a nonzero vector. Use `unit_or_zero()` if
+zero or near-zero inputs are possible.
+
 ## Quick Start
 
 ```cpp
@@ -141,7 +148,8 @@ Vector<double, 4> scaled = x * 2.5;
 ### Normalisation
 
 ```cpp
-Vector<float, 3> v(1.0f, 2.0f, 3.0f);  // using initialisation from array
+float values[3] = {1.0f, 2.0f, 3.0f};
+Vector<float, 3> v(values);
 v.normalize();               // in‑place
 auto u = v.unit();           // copy
 auto safe = v.unit_or_zero(1e-6f);
@@ -205,4 +213,3 @@ Same as the parent matrix library – **BSD 3‑Clause License**.
 - `Matrix.hpp` – main matrix class.
 - `Slice.hpp` – matrix slice views.
 - `helper_functions.hpp` – mathematical utilities (wrapping, comparisons, sign).
-```

@@ -29,6 +29,15 @@ This header is part of the PX4 matrix library and works with `Vector.hpp`, `Matr
 - Depends on `Vector.hpp`, `Matrix.hpp`, `SquareMatrix.hpp`.
 - Standard headers: `<cstring>` (for `memcpy`), `<cmath>` (for `sqrt`), `<cassert>`.
 
+## Theory
+
+`SparseVector<Type, M, Idxs...>` stores values only for the compile-time index
+set `Idxs`; all other logical entries are zero. Storage and arithmetic scale
+with the number of stored values `N`, not the logical dimension `M`. Indices
+must be unique and in range, and this implementation requires `0 < N < M`.
+Use it when the support is fixed at compile time; use `Vector` for a dense or
+runtime-varying support.
+
 ## Quick Start
 
 ```cpp
@@ -231,4 +240,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Vector.hpp` – dense vector class.
 - `Matrix.hpp` – dense matrix class.
 - `SquareMatrix.hpp` – square matrix with inversion, Cholesky, etc.
-```

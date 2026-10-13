@@ -26,6 +26,15 @@ This header is part of the PX4 matrix library and works with `Matrix.hpp`, `Vect
 - Depends on `Matrix.hpp`, `Vector.hpp`, `Slice.hpp`.
 - Standard headers: `<float.h>` (for `FLT_EPSILON`), `<cmath>` (indirectly through `Matrix.hpp`).
 
+## Theory
+
+Square matrices represent linear maps from a space to itself. Their trace is
+the sum of diagonal entries; inversion solves `A x = b` for arbitrary `b`.
+The Cholesky factorization writes a symmetric positive-definite matrix as
+`A = L Lᵀ`, which is useful for covariance matrices. `expm(A)` approximates
+the matrix exponential with a finite Taylor sum; accuracy depends on both the
+requested order and the size of `A`.
+
 ## Quick Start
 
 ```cpp
@@ -153,6 +162,8 @@ auto Sinv = choleskyInv(S);       // inverse via Cholesky
 ### Covariance matrix operations
 
 ```cpp
+#include "Vector3.hpp"
+
 SquareMatrix<float, 6> cov;
 // ... fill with covariance values ...
 
@@ -163,7 +174,7 @@ cov.uncorrelateCovarianceBlock<3>(2);
 cov.uncorrelateCovariance<3>(2);
 
 // Set the block to diagonal [1,2,3]
-Vector<float,3> vars(1,2,3);
+Vector3f vars(1,2,3);
 cov.uncorrelateCovarianceSetVariance<3>(2, vars);
 
 // Enforce symmetry on the entire matrix
@@ -182,7 +193,7 @@ auto expA = expm(A, 6);           // approximate rotation matrix
 ## Important Notes
 
 1. **Singular matrices** – `inv()` returns `false` and leaves the output matrix unchanged (or returns a zero matrix when used as value). Always check the return value when using the reference version.
-2. **Cholesky** – The implementation does not check for positive definiteness; if the matrix is indefinite, the result may contain zeros or NaNs.
+2. **Cholesky** – The implementation does not return a failure status for a non-positive pivot; the corresponding factor entries are set to zero. Check that the input is symmetric positive definite before relying on the factorization.
 3. **Covariance utilities** – These are designed for square covariance matrices. They zero out selected rows/columns while preserving symmetry assumptions.
 4. **Upper‑right triangle packing** – Stores elements in row‑major order, i.e. `(0,0), (0,1), …, (0,M-1), (1,1), (1,2), …`.
 5. **Performance** – Inversion and Cholesky are O(M³) algorithms; they are intended for small matrices (M ≤ 10 typically). For larger matrices, consider a dedicated linear algebra library.
@@ -211,4 +222,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Vector.hpp` – column vector class.
 - `Slice.hpp` – matrix slice views.
 - `helper_functions.hpp` – mathematical utilities (comparisons, wrapping).
-```

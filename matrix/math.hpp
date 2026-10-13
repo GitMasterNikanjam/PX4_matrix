@@ -1,3 +1,11 @@
+/**
+ * @file math.hpp
+ * @brief Convenience header for the public PX4 matrix types and algorithms.
+ *
+ * Include this header when a translation unit needs the complete matrix API.
+ * Individual headers can be included instead to reduce compile-time
+ * dependencies on constrained targets.
+ */
 #pragma once
 
 #include "AxisAngle.hpp"

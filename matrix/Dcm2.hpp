@@ -33,6 +33,7 @@
 
 /**
  * @file Dcm2.hpp
+ * @brief Two-dimensional direction cosine matrix rotation type.
  *
  * A givens rotation matrix 2x2.
  * All rotations and axis systems follow the right-hand rule.
@@ -54,55 +55,59 @@
 namespace matrix
 {
 
+/** @brief Two-dimensional rotation represented by a 2x2 direction cosine matrix.
+ * @tparam Type Floating-point scalar type.
+ */
 template<typename Type>
 class Dcm2 : public SquareMatrix<Type, 2>
 {
 public:
 	/**
-	 * Standard constructor
+	 * @brief Construct the identity rotation.
 	 *
 	 * Initializes to identity
 	 */
 	Dcm2() : SquareMatrix<Type, 2>(eye<Type, 2>()) {}
 
 	/**
-	 * Constructor from array
+	 * @brief Construct from a 2x2 row-major array.
 	 *
-	 * @param _data pointer to array
+	 * @param data Pointer to four values arranged by row.
 	 */
 	explicit Dcm2(const Type data_[2][2]) : SquareMatrix<Type, 2>(data_)
 	{
 	}
 
 	/**
-	 * Constructor from array
+	 * @brief Construct from a flat row-major array.
 	 *
-	 * @param _data pointer to array
+	 * @param data Pointer to four values arranged by row.
 	 */
 	explicit Dcm2(const Type data_[4]) : SquareMatrix<Type, 2>(data_)
 	{
 	}
 
 	/**
-	 * Copy constructor
+	 * @brief Construct from a general 2x2 matrix.
 	 *
-	 * @param other Matrix22 to set dcm to
+	 * @param other Source matrix; it is assumed to represent a valid rotation.
 	 */
 	Dcm2(const Matrix<Type, 2, 2> &other) : SquareMatrix<Type, 2>(other)
 	{
 	}
 
 	/**
-	 * Constructor from an angle
+	 * @brief Construct from a rotation angle.
 	 *
 	 * This sets the transformation matrix from frame 2 to frame 1 where the rotation
 	 * from frame 1 to frame 2 is described by an angle in radians.
 	 *
-	 * @param angle from frame 1 to frame 2 in radians
+	 * @param angle Rotation angle in radians.
 	 */
 	Dcm2(const Type angle)
 	{
 		Dcm2 &dcm = *this;
+		// Cache sine and cosine because each is used twice.
 		Type sin_angle = std::sin(angle);
 		Type cos_angle = std::cos(angle);
 
@@ -112,9 +117,11 @@ public:
 		dcm(1, 1) = cos_angle;
 	}
 
+	/** @brief Normalize both rows to limit accumulated roundoff.
+	 * @note This does not enforce orthogonality between rows. */
 	void renormalize()
 	{
-		// renormalize rows
+		// Normalize each row as a 2D vector and store it back in place.
 		for (size_t r = 0; r < 2; r++) {
 			Vector2<Type> rvec(Matrix<Type, 1, 2>(this->row(r)).transpose());
 			this->row(r) = rvec.normalized();
@@ -122,7 +129,9 @@ public:
 	}
 };
 
+/** Single-precision 2D direction cosine matrix. */
 using Dcm2f = Dcm2<float>;
+/** Double-precision 2D direction cosine matrix. */
 using Dcm2d = Dcm2<double>;
 
 } // namespace matrix

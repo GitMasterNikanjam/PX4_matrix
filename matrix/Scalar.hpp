@@ -71,6 +71,7 @@ public:
 	 */
 	operator const Type &()
 	{
+		// Return the stored value by reference without creating a scalar copy.
 		return _value;
 	}
 
@@ -80,6 +81,7 @@ public:
 	 */
 	operator Matrix<Type, 1, 1>() const
 	{
+		// Materialize the wrapped value in the sole matrix element.
 		Matrix<Type, 1, 1> m;
 		m(0, 0) = _value;
 		return m;
@@ -91,6 +93,7 @@ public:
 	 */
 	operator Vector<Type, 1>() const
 	{
+		// Materialize the wrapped value in the sole vector component.
 		Vector<Type, 1> m;
 		m(0) = _value;
 		return m;

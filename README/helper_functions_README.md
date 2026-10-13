@@ -35,6 +35,15 @@ All functions are inside the namespace `matrix`.
 
 ## Function Reference
 
+## Theory
+
+Floating-point equality is tolerance-based because binary arithmetic rounds
+most real values. Angle wrapping maps equivalent rotations into a chosen
+half-open interval; unwrapping adds whole revolutions to keep a sequence
+continuous. Integer wrapping uses remainder arithmetic with a correction for
+negative inputs. For each wrapping function, the interval must have positive
+width (`low < high`).
+
 ### `isEqualF()`
 
 ```cpp
@@ -148,7 +157,8 @@ int main() {
 ```cpp
 double angle = 5.0;               // rad
 double norm = matrix::wrap_pi(angle);   // -> 5.0 - 2π ≈ -1.283
-double norm2 = matrix::wrap_2pi(angle); // -> 5.0 - 2π ≈ 5.0 - 6.283 = 5.0? Actually 5.0 - 2π ≈ -1.283, then +2π = 5.0? No, wrap_2pi would give 5.0 - 2π? Let's compute: wrap_2pi(5.0) = wrap(5.0, 0, 2π) = 5.0 - 2π ≈ -1.283, then +2π = 5.0? Wait wrap uses floor, so (5.0-0)/2π = 0.795, floor=0 → no wrap, returns 5.0? Actually 5.0 is already < 2π and ≥0, so wrap_2pi(5.0)=5.0. Better example: wrap_2pi(7.0) = 7.0 - 2π ≈ 0.716.
+double norm2 = matrix::wrap_2pi(angle); // -> 5.0 (already in [0, 2π))
+double wrapped = matrix::wrap_2pi(7.0); // -> 7.0 - 2π ≈ 0.717
 ```
 
 ### Unwrapping a sequence
@@ -206,5 +216,3 @@ Same as the parent matrix library – **BSD 3‑Clause License**.
 
 - `Matrix.hpp` – main matrix class
 - `Slice.hpp` – matrix views
-
-```

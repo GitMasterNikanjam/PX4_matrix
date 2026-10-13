@@ -36,6 +36,12 @@ The library consists of the following headers (included as needed):
 | `Scalar.hpp` | Wrapper for scalar <-> 1×1 matrix conversion. |
 | `SparseVector.hpp` | Compile‑time sparse vector. |
 
+Detailed theory, API guidance, and multiple examples are available as separate
+files in [`README/`](README/README.md). The guide index links each public header
+to its own guide and includes notes for STM32 targets.
+For a code-free theory overview of the mathematics behind the library, see
+[`math_concepts_README.md`](README/math_concepts_README.md).
+
 ## Quick Start
 
 Include the desired headers and use the `matrix` namespace.
@@ -234,4 +240,3 @@ Developed and maintained by the **PX4 Development Team** with significant contri
 
 - `Eigen` – a more feature‑rich but heavier library.
 - `Ceres Solver` – non‑linear least squares with automatic differentiation (inspiration for `Dual`).
-```

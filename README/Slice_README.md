@@ -21,6 +21,14 @@ This file is part of the PX4 matrix library and works together with `Matrix.hpp`
 - Headers: `<cassert>`, `<cstdio>`, `<cmath>`.
 - Depends on `Matrix.hpp` (forward declaration only, but full definition is needed for operations that create matrices).
 
+## Theory
+
+A slice is a non-owning view described by an offset and compile-time row and
+column counts. It does not copy the parent matrix, so creating one is cheap;
+the parent must outlive every slice. A mutable slice provides aliasing writes,
+while `ConstSlice` prevents modification through that view. Converting a slice
+to `Matrix` makes an independent copy.
+
 ## Quick Start
 
 ```cpp
@@ -220,4 +228,3 @@ Same as the parent matrix library – **BSD 3‑Clause License**.
 
 - `Matrix.hpp` – the main matrix class.
 - `helper_functions.hpp` – mathematical utilities (wrapping, comparisons, sign).
-```

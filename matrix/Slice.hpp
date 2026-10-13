@@ -15,7 +15,7 @@
 #pragma once
 
 // ###########################################################################
-// Iclude Libraries
+// Include standard facilities used for bounds assertions and math.
 
 #include <cassert>   // Runtime bounds checking (debug builds only)
 #include <cstdio>    // Standard I/O (reserved for debugging/output)
@@ -106,6 +106,7 @@ public:
 		assert(i < P);
 		assert(j < Q);
 
+		// Translate view-relative coordinates into parent-matrix coordinates.
 		return (*_data)(_x0 + i, _y0 + j);
 	}
 
@@ -123,6 +124,7 @@ public:
 		assert(i < P);
 		assert(j < Q);
 
+		// Translate view-relative coordinates into parent-matrix coordinates.
 		return (*_data)(_x0 + i, _y0 + j);
 	}
 
@@ -312,7 +314,7 @@ public:
 	 * @param other Source vector
 	 * @return Reference to this slice after assignment
 	 */
-	// allow assigning vectors to a slice that are in the axis
+	// Enable vector assignment only for one-row slices through this overload.
 	template <size_t DUMMY = 1> // make this a template function since it only exists for some instantiations
 	SliceT<MatrixT, Type, 1, Q, M, N> &operator=(const Vector<Type, Q> &other)
 	{
@@ -679,7 +681,11 @@ public:
 	}
 
 private:
-	size_t _x0, _y0;
+	/** First row in the backing matrix covered by this view. */
+	size_t _x0;
+	/** First column in the backing matrix covered by this view. */
+	size_t _y0;
+	/** Non-owning pointer to the matrix that supplies the viewed elements. */
 	MatrixT *_data;
 };
 
@@ -694,6 +700,7 @@ private:
  * @tparam M Number of rows in the backing matrix
  * @tparam N Number of columns in the backing matrix
  */
+/** Mutable non-owning view of a P x Q region in an M x N matrix. */
 template <typename Type, size_t P, size_t Q, size_t M, size_t N>
 using Slice = SliceT<Matrix<Type, M, N>, Type, P, Q, M, N>;
 
@@ -708,6 +715,7 @@ using Slice = SliceT<Matrix<Type, M, N>, Type, P, Q, M, N>;
  * @tparam M Number of rows in the backing matrix
  * @tparam N Number of columns in the backing matrix
  */
+/** Read-only non-owning view of a P x Q region in an M x N matrix. */
 template <typename Type, size_t P, size_t Q, size_t M, size_t N>
 using ConstSlice = SliceT<const Matrix<Type, M, N>, Type, P, Q, M, N>;
 

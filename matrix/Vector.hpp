@@ -182,6 +182,7 @@ public:
 		const Vector &a(*this);
 		Type r(0);
 
+		// Accumulate products of corresponding components.
 		for (size_t i = 0; i < M; i++) {
 			r += a(i) * b(i, 0);
 		}
@@ -217,6 +218,7 @@ public:
 	Type norm() const
 	{
 		const Vector &a(*this);
+		// Reuse the dot product instead of constructing a temporary vector.
 		return Type(std::sqrt(a.dot(a)));
 	}
 
@@ -247,6 +249,7 @@ public:
 	 */
 	inline void normalize()
 	{
+		// This operation requires a non-zero norm, as stated in the precondition.
 		(*this) /= norm();
 	}
 
@@ -357,7 +360,8 @@ template<typename OStream, typename Type, size_t M>
 OStream &operator<<(OStream &os, const matrix::Vector<Type, M> &vector)
 {
 	os << "\n";
-	// element: tab, point, 8 digits, 4 scientific notation chars; row: newline; string: \0 end
+	// Reserve room for every formatted element, separators, newline, and the
+	// terminating null character before writing the temporary string.
 	static const size_t n = 15 * M * 1 + 1 + 1;
 	char string[n];
 	vector.transpose().write_string(string, n);

@@ -117,12 +117,14 @@ private:
 		return maxIndex;
 	}
 
-	// Compile‑time sanity checks
+	// Compile-time constraints ensure the sparse layout is unambiguous and fits
+	// inside the logical vector dimension.
 	static_assert(!duplicateIndices(), "Duplicate indices");
 	static_assert(N < M, "More entries than elements, use a dense vector");
 	static_assert(N > 0, "A sparse vector needs at least one element");
 	static_assert(findMaxIndex() < M, "Largest entry doesn't fit in sparse vector");
 
+	/** Values corresponding position-by-position to `_indices`. */
 	Type _data[N] {};
 
 	/**
@@ -134,13 +136,13 @@ private:
 	{
 		int compressedIndex = -1;
 
+		// Search the compile-time index list and preserve its declared order.
 		for (size_t i = 0; i < N; i++) {
 			if (index == _indices[i]) {
 				compressedIndex = static_cast<int>(i);
 			}
 		}
 
-		/** Storage for the non‑zero values (size N) */
 		return compressedIndex;
 	}
 
@@ -260,6 +262,7 @@ public:
 	{
 		Type accum(0);
 
+		// Visit only stored entries; implicit zero entries contribute nothing.
 		for (size_t i = 0; i < N; i++) {
 			accum += _data[i] * other(_indices[i]);
 		}
@@ -386,6 +389,7 @@ Type quadraticForm(const matrix::SquareMatrix<Type, M> &A, const matrix::SparseV
 {
 	Type res = Type(0);
 
+	// Restrict both matrix indices to the sparse support of x.
 	for (size_t i = 0; i < x.non_zeros(); i++) {
 		Type tmp = Type(0);
 

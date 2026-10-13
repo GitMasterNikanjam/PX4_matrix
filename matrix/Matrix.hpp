@@ -345,7 +345,8 @@ public:
 	 * Computes (*this) * other^T efficiently without forming transpose.
 	 * This can be faster than explicit transpose and multiply.
 	 * 
-	 * @tparam P Number of rows in other matrix
+	 * @tparam P Number of rows in other matrix; must equal M because the
+	 *           declared result is square (M x M).
 	 * @param other Matrix of size P x N
 	 * @return Result matrix of size M x M
 	 * 
@@ -354,6 +355,7 @@ public:
 	template<size_t P>
 	Matrix<Type, M, M> multiplyByTranspose(const Matrix<Type, P, N> &other) const
 	{
+		// Compute each entry from row dot products without constructing other^T.
 		Matrix<Type, M, P> res;
 		const Matrix<Type, M, N> &self = *this;
 
@@ -1254,7 +1256,7 @@ Type min(const Type x, const Type y)
 	bool x_is_nan = std::isnan(x);
 	bool y_is_nan = std::isnan(y);
 
-	// take the non-nan value if there is one
+	// Prefer the non-NaN operand so NaNs do not hide an available numeric bound.
 	if (x_is_nan || y_is_nan) {
 		if (x_is_nan && !y_is_nan) {
 			return y;
@@ -1284,7 +1286,7 @@ Type max(const Type x, const Type y)
 	bool x_is_nan = std::isnan(x);
 	bool y_is_nan = std::isnan(y);
 
-	// take the non-nan value if there is one
+	// Prefer the non-NaN operand so NaNs do not hide an available numeric bound.
 	if (x_is_nan || y_is_nan) {
 		if (x_is_nan && !y_is_nan) {
 			return y;

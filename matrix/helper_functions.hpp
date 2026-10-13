@@ -1,5 +1,5 @@
 /**
- * @file utility.hpp
+ * @file helper_functions.hpp
  * @brief Mathematical utility functions for floating point and integer operations
  * 
  * This file provides a collection of utility functions for numerical operations
@@ -83,13 +83,15 @@ namespace detail
 template<typename Floating>
 Floating wrap_floating(Floating x, Floating low, Floating high)
 {
-	// already in range
+	// Return early for the common case and avoid the division and floor below.
 	if (low <= x && x < high) {
 		return x;
 	}
 
 	const auto range = high - low;
-	const auto inv_range = Floating(1) / range; // should evaluate at compile time, multiplies below at runtime
+	// Floor-based wrap count gives consistent half-open intervals for negative
+	// inputs as well as positive inputs.
+	const auto inv_range = Floating(1) / range;
 	const auto num_wraps = std::floor((x - low) * inv_range);
 	return x - range * num_wraps;
 }
@@ -159,6 +161,8 @@ template<typename Integer>
 Integer wrap(Integer x, Integer low, Integer high)
 {
 	const auto range = high - low;
+	// For integer inputs, add enough whole ranges to reach the interval before
+	// using the remainder operator, whose sign follows the numerator in C++.
 
 	if (x < low) {
 		x += range * ((low - x) / range + 1);

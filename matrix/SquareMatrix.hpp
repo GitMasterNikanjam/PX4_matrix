@@ -27,6 +27,7 @@
 #pragma once
 
 #include <float.h>          // FLT_EPSILON for floating‑point tolerance
+#include <limits>
 #include "Slice.hpp"        // Matrix slice views
 
 namespace matrix
@@ -502,13 +503,13 @@ public:
 // Common type aliases
 // -----------------------------------------------------------------------------
 
-/** @brief 2×2 square matrix with float elements */
+/** @brief 2x2 square matrix with float elements. */
 using SquareMatrix2f = SquareMatrix<float, 2>;
 
-/** @brief 3×3 square matrix with float elements */
+/** @brief 3x3 square matrix with float elements. */
 using SquareMatrix3f = SquareMatrix<float, 3>;
 
-/** @brief 3×3 square matrix with double elements */
+/** @brief 3x3 square matrix with double elements. */
 using SquareMatrix3d = SquareMatrix<double, 3>;
 
 // -----------------------------------------------------------------------------
@@ -563,14 +564,16 @@ template<typename Type, size_t M>
 SquareMatrix<Type, M> expm(const Matrix<Type, M, M> &A, size_t order = 5)
 {
 	SquareMatrix<Type, M> res;
-	SquareMatrix<Type, M> A_pow = A;
+	SquareMatrix<Type, M> term;
+	// exp(A) starts with the identity (the zeroth Taylor term).
 	res.setIdentity();
-	size_t i_factorial = 1;
+	term.setIdentity();
 
 	for (size_t i = 1; i <= order; i++) {
-		i_factorial *= i;
-		res += A_pow / Type(i_factorial);
-		A_pow *= A_pow;
+		// Recurrence: T_i = T_(i-1) * A / i. This forms A^i/i!
+		// without separately computing a power or factorial.
+		term = term * A / Type(i);
+		res += term;
 	}
 
 	return res;
@@ -590,7 +593,7 @@ SquareMatrix<Type, M> expm(const Matrix<Type, M, M> &A, size_t order = 5)
 template<typename Type>
 bool inv(const SquareMatrix<Type, 1> &A, SquareMatrix<Type, 1> &inv, size_t rank = 1)
 {
-	if (std::fabs(A(0, 0)) < Type(FLT_EPSILON)) {
+	if (std::fabs(A(0, 0)) < std::numeric_limits<Type>::epsilon()) {
 		return false;
 	}
 
@@ -621,13 +624,14 @@ bool inv(const SquareMatrix<Type, M> &A, SquareMatrix<Type, M> &inv, size_t rank
 	// for all diagonal elements
 	for (size_t n = 0; n < rank; n++) {
 
-		// if diagonal is zero, swap with row below
-		if (std::fabs(U(n, n)) < Type(FLT_EPSILON)) {
+		// If the current pivot is too small, find a usable entry beneath it
+		// and exchange rows in U and P. L is kept consistent with that pivoting.
+		if (std::fabs(U(n, n)) < std::numeric_limits<Type>::epsilon()) {
 			//printf("trying pivot for row %d\n",n);
 			for (size_t i = n + 1; i < rank; i++) {
 
 				//printf("\ttrying row %d\n",i);
-				if (std::fabs(U(i, n)) > Type(FLT_EPSILON)) {
+				if (std::fabs(U(i, n)) > std::numeric_limits<Type>::epsilon()) {
 					//printf("swapped %d\n",i);
 					U.swapRows(i, n);
 					P.swapRows(i, n);
@@ -647,11 +651,11 @@ bool inv(const SquareMatrix<Type, M> &A, SquareMatrix<Type, M> &inv, size_t rank
 #endif
 
 		// failsafe, return zero matrix
-		if (std::fabs(static_cast<float>(U(n, n))) < FLT_EPSILON) {
+		if (std::fabs(U(n, n)) < std::numeric_limits<Type>::epsilon()) {
 			return false;
 		}
 
-		// for all rows below diagonal
+		// Eliminate entries below the pivot and store the multipliers in L.
 		for (size_t i = (n + 1); i < rank; i++) {
 			L(i, n) = U(i, n) / U(n, n);
 
@@ -666,7 +670,8 @@ bool inv(const SquareMatrix<Type, M> &A, SquareMatrix<Type, M> &inv, size_t rank
 	//printf("L:\n"); L.print();
 	//printf("U:\n"); U.print();
 
-	// solve LY=P*I for Y by forward subst
+	// Forward substitution solves L*Y=P*I. P currently contains the row
+	// permutation matrix, and L has a unit diagonal.
 	//SquareMatrix<Type, M> Y = P;
 
 	// for all columns of Y
@@ -691,7 +696,7 @@ bool inv(const SquareMatrix<Type, M> &A, SquareMatrix<Type, M> &inv, size_t rank
 
 	//printf("Y:\n"); Y.print();
 
-	// solve Ux=y for x by back subst
+	// Back substitution solves U*X=Y; the result replaces P and becomes A^-1.
 	//SquareMatrix<Type, M> X = Y;
 
 	// for all columns of X
@@ -743,7 +748,7 @@ bool inv(const SquareMatrix<Type, 2> &A, SquareMatrix<Type, 2> &inv)
 {
 	Type det = A(0, 0) * A(1, 1) - A(1, 0) * A(0, 1);
 
-	if (std::fabs(static_cast<float>(det)) < FLT_EPSILON || !std::isfinite(det)) {
+	if (std::fabs(det) < std::numeric_limits<Type>::epsilon() || !std::isfinite(det)) {
 		return false;
 	}
 
@@ -768,7 +773,7 @@ bool inv(const SquareMatrix<Type, 3> &A, SquareMatrix<Type, 3> &inv)
 		   A(0, 1) * (A(1, 0) * A(2, 2) - A(1, 2) * A(2, 0)) +
 		   A(0, 2) * (A(1, 0) * A(2, 1) - A(1, 1) * A(2, 0));
 
-	if (std::fabs(static_cast<float>(det)) < FLT_EPSILON || !std::isfinite(det)) {
+	if (std::fabs(det) < std::numeric_limits<Type>::epsilon() || !std::isfinite(det)) {
 		return false;
 	}
 
@@ -826,6 +831,7 @@ SquareMatrix <Type, M> cholesky(const SquareMatrix<Type, M> &A)
 	for (size_t j = 0; j < M; j++) {
 		for (size_t i = j; i < M; i++) {
 			if (i == j) {
+				// Diagonal factor is sqrt(A[j,j] minus prior-column energy).
 				float sum = 0;
 
 				for (size_t k = 0; k < j; k++) {
@@ -842,6 +848,8 @@ SquareMatrix <Type, M> cholesky(const SquareMatrix<Type, M> &A)
 				}
 
 			} else {
+				// Off-diagonal factor removes prior-column contributions, then
+				// divides by the diagonal factor for this column.
 				float sum = 0;
 
 				for (size_t k = 0; k < j; k++) {
@@ -883,12 +891,15 @@ SquareMatrix <Type, M> choleskyInv(const SquareMatrix<Type, M> &A)
 // -----------------------------------------------------------------------------
 
 /** @brief 2×2 square matrix (float) – alias for SquareMatrix2f */
+/** @brief Backward-compatible alias for a 2x2 float square matrix. */
 using Matrix2f = SquareMatrix<float, 2>;
 
 /** @brief 3×3 square matrix (float) – alias for SquareMatrix3f */
+/** @brief Backward-compatible alias for a 3x3 float square matrix. */
 using Matrix3f = SquareMatrix<float, 3>;
 
 /** @brief 3×3 square matrix (double) – alias for SquareMatrix3d */
+/** @brief Backward-compatible alias for a 3x3 double square matrix. */
 using Matrix3d = SquareMatrix<double, 3>;
 
 } // namespace matrix

@@ -168,4 +168,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Quaternion.hpp` – quaternion rotations.
 - `AxisAngle.hpp` – axis‑angle representation.
 - `Vector3.hpp` – 3‑element vector.
-```

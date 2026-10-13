@@ -39,6 +39,15 @@ Simply copy the headers into your project and include them:
 
 No build steps or configuration are needed.
 
+## Theory
+
+`Matrix<Type, M, N>` stores a fixed `M x N` array in row-major order. Its
+dimensions are template parameters, so incompatible products such as
+`Matrix<T,2,3> * Matrix<T,2,2>` fail at compile time. Matrix multiplication
+uses the usual row-by-column dot product; `emult()` and `edivide()` instead
+operate element by element. The fixed storage avoids heap allocation, while
+large instances and expression temporaries still consume stack or registers.
+
 ## Quick Start
 
 ```cpp
@@ -326,4 +335,3 @@ This library is part of the PX4/Firmware matrix library and is distributed under
 - `Slice.hpp` – provides the slice/view implementation.
 
 For more advanced linear algebra (e.g., LU decomposition, eigenvalues), consider combining this library with custom algorithms or using a dedicated library like Eigen. This library focuses on small, fixed‑size matrices with zero overhead.
-```

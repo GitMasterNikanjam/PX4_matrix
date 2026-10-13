@@ -37,10 +37,9 @@ namespace matrix
  *   (G * G⁺) is Hermitian
  *   (G⁺ * G) is Hermitian
  * 
- * The algorithm chooses between two Cholesky‑based paths depending on whether
- * the matrix is tall (M ≤ N) or wide (M > N):
- *   - If M ≤ N:  uses A = G * Gᵀ  (size M×M)
- *   - If M > N:  uses A = Gᵀ * G   (size N×N)
+ * The algorithm chooses between two Cholesky-based paths based on shape:
+ *   - If M <= N (wide or square): use G * G^T (size MxM).
+ *   - If M > N (tall): use G^T * G (size NxN).
  * 
  * @tparam Type Floating‑point type (float, double)
  * @tparam M Number of rows of input matrix G
@@ -66,10 +65,12 @@ bool geninv(const Matrix<Type, M, N> &G, Matrix<Type, N, M> &res)
 	size_t rank;
 
 	if (M <= N) {
-		// Over‑determined or square: use G * Gᵀ	
+		// Wide case: factor the smaller row-space Gram matrix G*G^T.
 		SquareMatrix<Type, M> A = G * G.transpose();
 		SquareMatrix<Type, M> L = fullRankCholesky(A, rank);
 
+		// The compact Cholesky factor stores accepted columns in L; form its
+		// rank-sized Gram matrix for inversion.
 		A = L.transpose() * L;
 		SquareMatrix<Type, M> X;
 
@@ -80,11 +81,12 @@ bool geninv(const Matrix<Type, M, N> &G, Matrix<Type, N, M> &res)
 
 		// doing an intermediate assignment reduces stack usage
 		// Compute G⁺ = Gᵀ * L * (X² * Lᵀ)
+		// Reuse A as workspace to reduce simultaneous large matrix temporaries.
 		A = X * X * L.transpose();
 		res = G.transpose() * (L * A);
 
 	} else {
-		// Under‑determined: use Gᵀ * G
+		// Tall case: factor the smaller column-space Gram matrix G^T*G.
 		SquareMatrix<Type, N> A = G.transpose() * G;
 		SquareMatrix<Type, N> L = fullRankCholesky(A, rank);
 
@@ -113,15 +115,19 @@ bool geninv(const Matrix<Type, M, N> &G, Matrix<Type, N, M> &res)
 template<typename Type>
 Type typeEpsilon();
 
-/** @brief Float epsilon */
+/** @brief Return machine epsilon for single-precision floating point. */
 template<> inline
 float typeEpsilon<float>()
 {
 	return FLT_EPSILON;
 }
 
-// Double epsilon can be added if needed, but the file currently only provides float.
-// For completeness we could add a double version, but it's not in the original.
+/** @brief Return machine epsilon for double-precision floating point. */
+template<> inline
+double typeEpsilon<double>()
+{
+	return DBL_EPSILON;
+}
 
 /**
  * @brief Full‑rank Cholesky factorisation of a symmetric positive‑definite matrix A
@@ -158,12 +164,14 @@ SquareMatrix<Type, N> fullRankCholesky(const SquareMatrix<Type, N> &A,
 	for (size_t k = 0; k < N; k++) {
 
 		if (r == 0) {
+			// The first accepted column has no earlier factors to subtract.
 			// First column: copy A(i,k) directly
 			for (size_t i = k; i < N; i++) {
 				L(i, r) = A(i, k);
 			}
 
 		} else {
+			// Remove the contribution explained by columns already accepted.
 			// Subtract contributions from already computed columns
 			for (size_t i = k; i < N; i++) {
 				// Compute LL = L[k:n, :r] * L[k, :r].T
@@ -177,7 +185,10 @@ SquareMatrix<Type, N> fullRankCholesky(const SquareMatrix<Type, N> &A,
 			}
 		}
 
-		// If the diagonal element is large enough, accept this column
+		// Accept a pivot only when it is positive and larger than tolerance;
+		// this is the rank decision for the positive-semidefinite Gram matrix.
+		// Reject pivots below a scale-aware tolerance; accepted columns increase
+		// the numerical rank and occupy the next compact column of L.
 		if (L(k, r) > tol) {
 			L(k, r) = std::sqrt(L(k, r));		// diagonal element becomes sqrt
 

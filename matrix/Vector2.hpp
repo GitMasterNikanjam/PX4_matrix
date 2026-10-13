@@ -108,6 +108,7 @@ public:
 	Type cross(const Matrix21 &b) const
 	{
 		const Vector2 &a(*this);
+		// The 2D cross product is the signed Z component of the 3D product.
 		return a(0) * b(1, 0) - a(1) * b(0, 0);
 	}
 

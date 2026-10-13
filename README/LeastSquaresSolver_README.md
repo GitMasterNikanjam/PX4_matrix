@@ -44,6 +44,15 @@ int main() {
 }
 ```
 
+## Theory
+
+The solver factors `A` as `Q R` using Householder reflections. Since `Q` is
+orthogonal, minimizing `||Ax-b||₂` is equivalent to minimizing
+`||Rx-Qᵀb||₂`. The first `N` rows form an upper-triangular system that can be
+solved by back-substitution. Householder QR avoids explicitly forming `AᵀA`,
+which would square the condition number. The method assumes `M >= N` and full
+column rank for a unique solution.
+
 ## API Reference
 
 ### Class `LeastSquaresSolver<Type, M, N>`
@@ -69,7 +78,7 @@ LeastSquaresSolver(const Matrix<Type, M, N>& A);
 | Method | Description |
 |--------|-------------|
 | `Vector<Type, M> qtb(const Vector<Type, M>& b)` | Computes `Qᵀ·b` using the stored Householder reflectors. Useful when solving for multiple right‑hand sides. |
-| `Vector<Type, N> solve(const Vector<Type, M>& b)` | Solves `R·x = Qᵀ·b` by back‑substitution. Returns the least‑squares solution `x`. |
+| `Vector<Type, N> solve(const Vector<Type, M>& b)` | Computes `Qᵀ·b`, then solves the leading `N x N` triangular system by back-substitution. |
 
 ## Usage Examples
 
@@ -111,7 +120,7 @@ auto Qtb = solver.qtb(b);
 
 ### Check for rank deficiency
 
-The solver does not explicitly check the rank. If `A` is rank‑deficient, the back‑substitution may divide by zero. The code includes a division‑by‑zero safeguard: if `|A(i,i)| < 1e-8`, it returns a zero vector. For robust rank handling, consider using the pseudoinverse (`PseudoInverse.hpp`) or SVD.
+The solver does not return a rank estimate. A near-zero column norm stops QR factorization; if back-substitution encounters a diagonal value considered zero at tolerance `1e-8`, `solve()` returns the zero vector. Treat this as a failure fallback, not as a valid least-squares solution. Use a rank-revealing method when rank deficiency must be handled explicitly.
 
 ## Important Notes
 
@@ -120,7 +129,7 @@ The solver does not explicitly check the rank. If `A` is rank‑deficient, the b
 - **Performance** – The decomposition is performed in the constructor (O(M·N²) flops). Solving for a new `b` is O(N²) for back‑substitution plus O(M·N) for applying `Qᵀ`.
 - **Numerical stability** – Householder reflections are more stable than normal equations (`AᵀA x = Aᵀb`), especially for ill‑conditioned problems.
 - **No memory allocation** – All data is stored in fixed‑size arrays (template parameters). Stack usage depends on `M` and `N`.
-- **Printing** – The `solve` method includes a `printf` statement for debugging (line `printf("i %d\n", static_cast<int>(i));`). This may be undesirable in production; consider removing or guarding with a macro.
+- **Stack use** – The factorization and temporary Householder vector use fixed-size storage. Check stack use for large `M` on microcontrollers.
 
 ## Dependencies
 
@@ -142,4 +151,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see copyright 
 - `PseudoInverse.hpp` – for Moore‑Penrose pseudoinverse based on Cholesky.
 - `helper_functions.hpp` – utilities like `isEqualF`.
 - `Matrix.hpp` – dense matrix class.
-```

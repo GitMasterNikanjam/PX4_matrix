@@ -21,6 +21,14 @@ This header is part of the PX4 matrix library and works with `Vector.hpp`, `Matr
 - Forward declaration of `Dcm` – the `hat()` method returns a `Dcm<Type>` (direction cosine matrix). You must include `Dcm.hpp` if you use `hat()`.
 - Standard headers: `<cmath>` (included via `Vector.hpp`).
 
+## Theory
+
+The 3D cross product `a x b` is perpendicular to both inputs and has magnitude
+`||a|| ||b|| sin(theta)`. `hat(a)` encodes the same operation as a matrix:
+`hat(a) b = a x b`. Its inverse mapping for skew-symmetric matrices is
+`Dcm::vee()`. The `xy()` slice aliases the original vector's first two
+components; writes through either view affect the same storage.
+
 ## Quick Start
 
 ```cpp
@@ -206,4 +214,3 @@ Same as the parent matrix library – **BSD 3‑Clause License**.
 - `Dcm.hpp` – direction cosine matrix (rotation matrix) with `vee()` inverse of `hat()`.
 - `Matrix.hpp` – full matrix class.
 - `helper_functions.hpp` – mathematical utilities (wrapping, comparisons).
-```

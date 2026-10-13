@@ -1,5 +1,6 @@
 /**
  * @file Dual.hpp
+ * @brief Forward-mode automatic differentiation using dual numbers.
  *
  * This is a dual number type for calculating automatic derivatives.
  *
@@ -21,28 +22,50 @@
 namespace matrix
 {
 
+/**
+ * @brief Scalar value paired with its gradient with respect to N inputs.
+ *
+ * Arithmetic and supported elementary functions propagate derivatives using
+ * forward-mode automatic differentiation.
+ * @tparam Scalar Floating-point scalar type.
+ * @tparam N Number of independent input variables.
+ */
 template <typename Scalar, size_t N>
 struct Dual {
+	/** Number of derivative components. */
 	static constexpr size_t WIDTH = N;
 
+	/** The ordinary, non-derivative value. */
 	Scalar value {};
+	/** Partial derivatives ordered by independent input variable. */
 	Vector<Scalar, N> derivative;
 
+	/** @brief Construct a zero value with zero derivatives. */
 	Dual() = default;
 
+	/**
+	 * @brief Construct a value and optionally mark one component as an input.
+	 * @param v Initial scalar value.
+	 * @param inputDimension Derivative index to set to one; values >= N mean
+	 *                       this value is a constant.
+	 */
 	explicit Dual(Scalar v, size_t inputDimension = 65535)
 	{
 		value = v;
 
+		// Seed the selected independent variable with derivative one; the
+		// default sentinel leaves every derivative at zero.
 		if (inputDimension < N) {
 			derivative(inputDimension) = Scalar(1);
 		}
 	}
 
+	/** @brief Construct from a value and an explicit derivative vector. */
 	explicit Dual(Scalar v, const Vector<Scalar, N> &d) :
 		value(v), derivative(d)
 	{}
 
+	/** @brief Assign a constant and clear all derivatives. */
 	Dual<Scalar, N> &operator=(const Scalar &a)
 	{
 		derivative.setZero();
@@ -50,51 +73,61 @@ struct Dual {
 		return *this;
 	}
 
+	/** @brief Add another dual number in place. */
 	Dual<Scalar, N> &operator +=(const Dual<Scalar, N> &a)
 	{
 		return (*this = *this + a);
 	}
 
+	/** @brief Multiply by another dual number in place. */
 	Dual<Scalar, N> &operator *=(const Dual<Scalar, N> &a)
 	{
 		return (*this = *this * a);
 	}
 
+	/** @brief Subtract another dual number in place. */
 	Dual<Scalar, N> &operator -=(const Dual<Scalar, N> &a)
 	{
 		return (*this = *this - a);
 	}
 
+	/** @brief Divide by another dual number in place. */
 	Dual<Scalar, N> &operator /=(const Dual<Scalar, N> &a)
 	{
 		return (*this = *this / a);
 	}
 
+	/** @brief Add a constant in place; derivatives are unchanged. */
 	Dual<Scalar, N> &operator +=(Scalar a)
 	{
 		return (*this = *this + a);
 	}
 
+	/** @brief Subtract a constant in place; derivatives are unchanged. */
 	Dual<Scalar, N> &operator -=(Scalar a)
 	{
 		return (*this = *this - a);
 	}
 
+	/** @brief Scale the value and gradient in place. */
 	Dual<Scalar, N> &operator *=(Scalar a)
 	{
 		return (*this = *this * a);
 	}
 
+	/** @brief Divide the value and gradient by a constant in place. */
 	Dual<Scalar, N> &operator /=(Scalar a)
 	{
 		return (*this = *this / a);
 	}
 
+	/** @brief Compare value and gradient, using tolerant comparison for value. */
 	bool operator==(const Dual<Scalar, N> &other) const
 	{
 		return isEqualF(value, other.value) && (derivative == other.derivative);
 	}
 
+	/** @brief Return true when value or gradient differs. */
 	bool operator!=(const Dual<Scalar, N> &other) const
 	{
 		const Dual<Scalar, N> &self = *this;
@@ -102,7 +135,9 @@ struct Dual {
 	}
 };
 
-// operators
+/** @name Dual arithmetic operators
+ * These overloads apply the usual arithmetic rules and propagate gradients.
+ * @{ */
 
 template <typename Scalar, size_t N>
 Dual<Scalar, N> operator+(const Dual<Scalar, N> &a)
@@ -155,6 +190,7 @@ Dual<Scalar, N> operator-(Scalar a, const Dual<Scalar, N> &b)
 template <typename Scalar, size_t N>
 Dual<Scalar, N> operator*(const Dual<Scalar, N> &a, const Dual<Scalar, N> &b)
 {
+	// Product rule: d(a*b) = a*db + b*da.
 	return Dual<Scalar, N>(a.value * b.value, a.value * b.derivative + b.value * a.derivative);
 }
 
@@ -173,6 +209,7 @@ Dual<Scalar, N> operator*(Scalar a, const Dual<Scalar, N> &b)
 template <typename Scalar, size_t N>
 Dual<Scalar, N> operator/(const Dual<Scalar, N> &a, const Dual<Scalar, N> &b)
 {
+	// Quotient rule written using 1/b to reuse the reciprocal in value and gradient.
 	const Scalar inv_b_real = Scalar(1) / b.value;
 	return Dual<Scalar, N>(a.value * inv_b_real, a.derivative * inv_b_real -
 			       a.value * b.derivative * inv_b_real * inv_b_real);
@@ -187,118 +224,125 @@ Dual<Scalar, N> operator/(const Dual<Scalar, N> &a, Scalar b)
 template <typename Scalar, size_t N>
 Dual<Scalar, N> operator/(Scalar a, const Dual<Scalar, N> &b)
 {
+	// d(a/b) = -a * db / b^2 because the numerator is constant.
 	const Scalar inv_b_real = Scalar(1) / b.value;
 	return Dual<Scalar, N>(a * inv_b_real, (-inv_b_real * a * inv_b_real) * b.derivative);
 }
 
-// basic math
+/** @} */
 
-// sqrt
+/** @name Elementary functions for dual numbers
+ * Each derivative follows the corresponding scalar chain rule.
+ * @{ */
+
+/** @brief Square root with derivative da/(2*sqrt(a)). */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> sqrt(const Dual<Scalar, N> &a)
 {
+	// The derivative is undefined at zero; callers should avoid that point.
 	Scalar real = std::sqrt(a.value);
 	return Dual<Scalar, N>(real, a.derivative * (Scalar(1) / (Scalar(2) * real)));
 }
 
-// abs
+/** @brief Absolute value; the derivative changes sign for negative inputs. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> abs(const Dual<Scalar, N> &a)
 {
 	return a.value >= Scalar(0) ? a : -a;
 }
 
-// ceil
+/** @brief Ceiling; returns a constant dual because the function is locally flat. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> ceil(const Dual<Scalar, N> &a)
 {
 	return Dual<Scalar, N>(std::ceil(a.value));
 }
 
-// floor
+/** @brief Floor; returns a constant dual because the function is locally flat. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> floor(const Dual<Scalar, N> &a)
 {
 	return Dual<Scalar, N>(std::floor(a.value));
 }
 
-// fmod
+/** @brief Remainder by a constant; carries the input derivative through. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> fmod(const Dual<Scalar, N> &a, Scalar mod)
 {
 	return Dual<Scalar, N>(a.value - Scalar(size_t(a.value / mod)) * mod, a.derivative);
 }
 
-// max
+/** @brief Select the dual operand with the greater value. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> max(const Dual<Scalar, N> &a, const Dual<Scalar, N> &b)
 {
 	return a.value >= b.value ? a : b;
 }
 
-// min
+/** @brief Select the dual operand with the lesser value. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> min(const Dual<Scalar, N> &a, const Dual<Scalar, N> &b)
 {
 	return a.value < b.value ? a : b;
 }
 
-// isnan
+/** @brief Test whether a scalar value is NaN. */
 template <typename Scalar>
 bool IsNan(Scalar a)
 {
 	return std::isnan(a);
 }
 
+/** @brief Test whether the value component of a dual number is NaN. */
 template <typename Scalar, size_t N>
 bool IsNan(const Dual<Scalar, N> &a)
 {
 	return IsNan(a.value);
 }
 
-// isfinite
+/** @brief Test whether a scalar value is finite. */
 template <typename Scalar>
 bool IsFinite(Scalar a)
 {
 	return std::isfinite(a);
 }
 
+/** @brief Test whether the value component of a dual number is finite. */
 template <typename Scalar, size_t N>
 bool IsFinite(const Dual<Scalar, N> &a)
 {
 	return IsFinite(a.value);
 }
 
-// isinf
+/** @brief Test whether a scalar value is infinite. */
 template <typename Scalar>
 bool IsInf(Scalar a)
 {
 	return std::isinf(a);
 }
 
+/** @brief Test whether the value component of a dual number is infinite. */
 template <typename Scalar, size_t N>
 bool IsInf(const Dual<Scalar, N> &a)
 {
 	return IsInf(a.value);
 }
 
-// trig
-
-// sin
+/** @brief Sine with derivative cos(a)*da. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> sin(const Dual<Scalar, N> &a)
 {
 	return Dual<Scalar, N>(std::sin(a.value), std::cos(a.value) * a.derivative);
 }
 
-// cos
+/** @brief Cosine with derivative -sin(a)*da. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> cos(const Dual<Scalar, N> &a)
 {
 	return Dual<Scalar, N>(std::cos(a.value), -std::sin(a.value) * a.derivative);
 }
 
-// tan
+/** @brief Tangent with derivative (1+tan(a)^2)*da. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> tan(const Dual<Scalar, N> &a)
 {
@@ -306,7 +350,7 @@ Dual<Scalar, N> tan(const Dual<Scalar, N> &a)
 	return Dual<Scalar, N>(real, (Scalar(1) + real * real) * a.derivative);
 }
 
-// asin
+/** @brief Inverse sine with derivative da/sqrt(1-a^2). */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> asin(const Dual<Scalar, N> &a)
 {
@@ -314,7 +358,7 @@ Dual<Scalar, N> asin(const Dual<Scalar, N> &a)
 	return Dual<Scalar, N>(std::asin(a.value), asin_d * a.derivative);
 }
 
-// acos
+/** @brief Inverse cosine with derivative -da/sqrt(1-a^2). */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> acos(const Dual<Scalar, N> &a)
 {
@@ -322,7 +366,7 @@ Dual<Scalar, N> acos(const Dual<Scalar, N> &a)
 	return Dual<Scalar, N>(std::acos(a.value), acos_d * a.derivative);
 }
 
-// atan
+/** @brief Inverse tangent with derivative da/(1+a^2). */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> atan(const Dual<Scalar, N> &a)
 {
@@ -330,16 +374,24 @@ Dual<Scalar, N> atan(const Dual<Scalar, N> &a)
 	return Dual<Scalar, N>(std::atan(a.value), atan_d * a.derivative);
 }
 
-// atan2
+/** @brief Two-argument inverse tangent with derivatives for both operands. */
 template <typename Scalar, size_t N>
 Dual<Scalar, N> atan2(const Dual<Scalar, N> &a, const Dual<Scalar, N> &b)
 {
-	// derivative is equal to that of atan(a/b), so substitute a/b into atan and simplify
+	// Differentiate atan2(a,b) directly; this form avoids explicitly forming a/b.
 	Scalar atan_d = Scalar(1) / (a.value * a.value + b.value * b.value);
 	return Dual<Scalar, N>(std::atan2(a.value, b.value), (a.derivative * b.value - a.value * b.derivative) * atan_d);
 }
 
-// retrieve the derivative elements of a vector of Duals into a matrix
+/** @} */
+
+/** @brief Collect each dual element's gradient as one row of a Jacobian.
+ * @tparam Scalar Underlying scalar type.
+ * @tparam M Number of output values.
+ * @tparam N Number of independent inputs.
+ * @param input Mx1 vector of dual values.
+ * @return MxN Jacobian matrix.
+ */
 template <typename Scalar, size_t M, size_t N>
 Matrix<Scalar, M, N> collectDerivatives(const Matrix<Dual<Scalar, N>, M, 1> &input)
 {
@@ -352,7 +404,14 @@ Matrix<Scalar, M, N> collectDerivatives(const Matrix<Dual<Scalar, N>, M, 1> &inp
 	return jac;
 }
 
-// retrieve the real (non-derivative) elements of a matrix of Duals into an equally sized matrix
+/** @brief Extract value components from a matrix of dual numbers.
+ * @tparam Scalar Underlying scalar type.
+ * @tparam M Number of rows.
+ * @tparam N Number of columns.
+ * @tparam D Derivative dimension carried by each dual value.
+ * @param input Matrix whose elements are dual numbers.
+ * @return MxN matrix containing only the values.
+ */
 template <typename Scalar, size_t M, size_t N, size_t D>
 Matrix<Scalar, M, N> collectReals(const Matrix<Dual<Scalar, D>, M, N> &input)
 {
@@ -367,6 +426,7 @@ Matrix<Scalar, M, N> collectReals(const Matrix<Dual<Scalar, D>, M, N> &input)
 	return r;
 }
 
+/** @brief Write a dual number's value and gradient to an output stream. */
 template<typename OStream, typename Type, size_t N>
 OStream &operator<<(OStream &os, const matrix::Dual<Type, N> &dual)
 {

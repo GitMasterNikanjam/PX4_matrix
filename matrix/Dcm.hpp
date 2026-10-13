@@ -1,5 +1,6 @@
 /**
  * @file Dcm.hpp
+ * @brief Three-dimensional direction cosine matrix rotation type.
  *
  * A direction cosine matrix class.
  * All rotations and axis systems follow the right-hand rule.
@@ -21,66 +22,70 @@
 namespace matrix
 {
 
+/** Forward declaration of the axis-angle rotation type. */
 template<typename Type>
 class AxisAngle;
 
+/** Forward declaration of the Euler-angle rotation type. */
 template<typename Type>
 class Euler;
 
+/** Forward declaration of the quaternion rotation type. */
 template<typename Type>
 class Quaternion;
 
 /**
- * Direction cosine matrix class
+ * @brief Three-dimensional rotation represented by a 3x3 direction cosine matrix.
  *
  * The rotation between two coordinate frames is
- * described by this class.
+ * described by this class. The default value is identity.
+ * @tparam Type Floating-point scalar type.
  */
 template<typename Type>
 class Dcm : public SquareMatrix<Type, 3>
 {
 public:
 	/**
-	 * Standard constructor
+	 * @brief Construct the identity rotation.
 	 *
 	 * Initializes to identity
 	 */
 	Dcm() : SquareMatrix<Type, 3>(eye<Type, 3>()) {}
 
 	/**
-	 * Constructor from array
+	 * @brief Construct from a 3x3 row-major array.
 	 *
-	 * @param _data pointer to array
+	 * @param data Pointer to nine values arranged by row.
 	 */
 	explicit Dcm(const Type data_[3][3]) : SquareMatrix<Type, 3>(data_)
 	{
 	}
 
 	/**
-	 * Constructor from array
+	 * @brief Construct from a flat row-major array.
 	 *
-	 * @param _data pointer to array
+	 * @param data Pointer to nine values arranged by row.
 	 */
 	explicit Dcm(const Type data_[9]) : SquareMatrix<Type, 3>(data_)
 	{
 	}
 
 	/**
-	 * Copy constructor
+	 * @brief Construct from a general 3x3 matrix.
 	 *
-	 * @param other Matrix33 to set dcm to
+	 * @param other Source matrix; it is assumed to represent a valid rotation.
 	 */
 	Dcm(const Matrix<Type, 3, 3> &other) : SquareMatrix<Type, 3>(other)
 	{
 	}
 
 	/**
-	 * Constructor from quaternion
+	 * @brief Construct from a quaternion.
 	 *
 	 * Instance is initialized from quaternion representing
 	 * coordinate transformation from frame 2 to frame 1.
 	 *
-	 * @param q quaternion to set dcm to
+	 * @param q Quaternion describing the coordinate transformation.
 	 */
 	Dcm(const Quaternion<Type> &q)
 	{
@@ -89,6 +94,7 @@ public:
 		const Type b = q(1);
 		const Type c = q(2);
 		const Type d = q(3);
+		// Cache pairwise products because each appears in two matrix entries.
 		const Type ab = a * b;
 		const Type ac = a * c;
 		const Type ad = a * d;
@@ -110,17 +116,18 @@ public:
 	}
 
 	/**
-	 * Constructor from euler angles
+	 * @brief Construct from 3-2-1 intrinsic Tait-Bryan angles.
 	 *
 	 * This sets the transformation matrix from frame 2 to frame 1 where the rotation
 	 * from frame 1 to frame 2 is described by a 3-2-1 intrinsic Tait-Bryan rotation sequence.
 	 *
 	 *
-	 * @param euler euler angle instance
+	 * @param euler Roll, pitch, and yaw rotation.
 	 */
 	Dcm(const Euler<Type> &euler)
 	{
 		Dcm &dcm = *this;
+		// Evaluate each trigonometric term once and reuse it in the matrix.
 		Type cosPhi = Type(std::cos(euler.phi()));
 		Type sinPhi = Type(std::sin(euler.phi()));
 		Type cosThe = Type(std::cos(euler.theta()));
@@ -143,13 +150,13 @@ public:
 
 
 	/**
-	 * Constructor from axis angle
+	 * @brief Construct from an axis-angle rotation vector.
 	 *
 	 * This sets the transformation matrix from frame 2 to frame 1 where the rotation
 	 * from frame 1 to frame 2 is described by a 3-2-1 intrinsic Tait-Bryan rotation sequence.
 	 *
 	 *
-	 * @param euler euler angle instance
+	 * @param aa Axis-angle rotation vector.
 	 */
 	Dcm(const AxisAngle<Type> &aa)
 	{
@@ -157,15 +164,21 @@ public:
 		dcm = Quaternion<Type>(aa);
 	}
 
-	Vector3<Type> vee() const // inverse to Vector.hat() operation
+	/** @brief Apply the inverse of the skew-symmetric hat mapping to the
+	 * off-diagonal elements of this matrix.
+	 * @return Three-vector containing [-R(1,2), R(0,2), -R(0,1)]. */
+	Vector3<Type> vee() const
 	{
+		// These entries are the independent components of the skew part.
 		const Dcm &A(*this);
 		return {-A(1, 2), A(0, 2), -A(0, 1)};
 	}
 
+	/** @brief Normalize each row independently to limit accumulated roundoff.
+	 * @note This does not enforce mutual orthogonality between rows. */
 	void renormalize()
 	{
-		/* renormalize rows */
+		// Convert each row to a vector, normalize it, then write it back.
 		for (size_t r = 0; r < 3; r++) {
 			matrix::Vector3<Type> rvec(Matrix<Type, 1, 3>(this->Matrix<Type, 3, 3>::row(r)).transpose());
 			this->Matrix<Type, 3, 3>::row(r) = rvec.normalized();
@@ -173,7 +186,9 @@ public:
 	}
 };
 
+/** Single-precision 3D direction cosine matrix. */
 using Dcmf = Dcm<float>;
+/** Double-precision 3D direction cosine matrix. */
 using Dcmd = Dcm<double>;
 
 } // namespace matrix

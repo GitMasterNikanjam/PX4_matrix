@@ -218,4 +218,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Euler.hpp` – Euler angles (3‑2‑1 intrinsic).
 - `AxisAngle.hpp` – axis‑angle representation.
 - `Vector3.hpp`, `Vector4.hpp` – base vector classes.
-```

@@ -19,6 +19,13 @@ This header is part of the PX4 matrix library and works with `Matrix.hpp` and `V
 - Depends on `Matrix.hpp` (and indirectly `Vector.hpp`).
 - Standard headers: none directly; `Matrix.hpp` includes `<cmath>`, `<cstdio>`, `<cstring>`.
 
+## Theory
+
+`Scalar<Type>` adapts one numeric value to APIs that also accept 1x1 matrices
+or one-element vectors. Its implicit conversions make generic algebra code
+convenient, but can also make overload resolution less obvious. The wrapper is
+immutable after construction; use a new `Scalar` when the value changes.
+
 ## Quick Start
 
 ```cpp
@@ -165,4 +172,3 @@ Same as the parent matrix library – **BSD 3‑Clause License** (see the copyri
 - `Matrix.hpp` – dense matrix class.
 - `Vector.hpp` – dense vector class.
 - `helper_functions.hpp` – floating point utilities (`isEqualF`).
-```

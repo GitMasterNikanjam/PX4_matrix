@@ -1,7 +1,8 @@
 /**
  * @file LeastSquaresSolver.hpp
  *
- * Least Squares Solver using QR householder decomposition.
+ * @brief Reusable least-squares solver based on Householder QR decomposition.
+ *
  * It calculates x for Ax = b.
  * A = Q*R
  * where R is an upper triangular matrix.
@@ -25,9 +26,8 @@ class LeastSquaresSolver
 public:
 
 	/**
-	 * @brief Class calculates QR decomposition which can be used for linear
-	 * least squares
-	 * @param A Matrix of size MxN
+	 * @brief Factor a tall or square matrix once for repeated least-squares solves.
+	 * @param A Coefficient matrix of size MxN.
 	 *
 	 * Initialize the class with a MxN matrix. The constructor starts the
 	 * QR decomposition. This class does not check the rank of the matrix.
@@ -37,10 +37,11 @@ public:
 	{
 		static_assert(M >= N, "Matrix dimension should be M >= N");
 
-		// Copy contentents of matrix A
+		// Keep the factorization in-place so no second MxN work matrix is needed.
 		_A = A;
 
 		for (size_t j = 0; j < N; j++) {
+			// Compute the norm of the active column tail that remains to be reduced.
 			Type normx = Type(0);
 
 			for (size_t i = j; i < M; i++) {
@@ -48,15 +49,18 @@ public:
 			}
 
 			normx = std::sqrt(normx);
+			// Choose the sign opposite the leading entry to avoid cancellation in
+			// the Householder vector's first component.
 			Type s = _A(j, j) > 0 ? Type(-1) : Type(1);
 			Type u1 = _A(j, j) - s * normx;
 
-			// prevent divide by zero
-			// also covers u1. normx is never negative
+			// A negligible column tail cannot define a stable reflector; stop
+			// factorization and leave remaining reflector coefficients at zero.
 			if (normx < Type(1e-8)) {
 				break;
 			}
 
+			// Store the reflector in compact form with an implicit leading one.
 			Type w[M] = {};
 			w[0] = Type(1);
 
@@ -68,6 +72,8 @@ public:
 			_A(j, j) = s * normx;
 			_tau(j) = -s * u1 / normx;
 
+			// Apply the reflector to each remaining column, forming R above the
+			// diagonal while preserving reflector data below it.
 			for (size_t k = j + 1; k < N; k++) {
 				Type tmp = Type(0);
 
@@ -84,7 +90,7 @@ public:
 	}
 
 	/**
-	 * @brief qtb Calculate Q^T * b
+	 * @brief Apply the stored reflectors to calculate Q^T times b.
 	 * @param b
 	 * @return Q^T*b
 	 *
@@ -95,6 +101,7 @@ public:
 	{
 		Vector<Type, M> qtbv = b;
 
+		// Apply reflectors in factorization order to transform b by Q^T.
 		for (size_t j = 0; j < N; j++) {
 			Type w[M];
 			w[0] = Type(1);
@@ -119,7 +126,7 @@ public:
 	}
 
 	/**
-	 * @brief Solve Ax=b for x
+	 * @brief Solve the least-squares system Ax=b for x.
 	 * @param b
 	 * @return Vector x
 	 *
@@ -131,16 +138,18 @@ public:
 		Vector<Type, M> qtbv = qtb(b);
 		Vector<Type, N> x;
 
-		// size_t is unsigned and wraps i = 0 - 1 to i > N
+		// Back-substitute from the last coefficient to the first. The unsigned
+		// loop terminates after i reaches zero and then wraps above N.
 		for (size_t i = N - 1; i < N; i--) {
-			printf("i %d\n", static_cast<int>(i));
+			// Remove already solved upper-triangular contributions.
 			x(i) = qtbv(i);
 
 			for (size_t r = i + 1; r < N; r++) {
 				x(i) -= _A(i, r) * x(r);
 			}
 
-			// divide by zero, return vector of zeros
+			// A zero diagonal means the factorization is rank deficient; return
+			// the documented all-zero fallback instead of dividing by zero.
 			if (isEqualF(_A(i, i), Type(0), Type(1e-8))) {
 				for (size_t z = 0; z < N; z++) {
 					x(z) = Type(0);
@@ -156,7 +165,9 @@ public:
 	}
 
 private:
+	/** Packed Householder vectors below the diagonal and R on/above it. */
 	Matrix<Type, M, N> _A;
+	/** Householder scale factors used when applying Q or Q^T. */
 	Vector<Type, N> _tau;
 
 };
