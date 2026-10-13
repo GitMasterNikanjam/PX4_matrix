@@ -32,7 +32,7 @@
  ****************************************************************************/
 
 #include <gtest/gtest.h>
-#include <matrix/math.hpp>
+#include <src/math.hpp>
 
 using namespace matrix;
 

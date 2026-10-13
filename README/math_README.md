@@ -1,6 +1,6 @@
 # `math.hpp` – Complete Matrix API Include
 
-`matrix/math.hpp` includes the library's public matrix, vector, rotation,
+`src/math.hpp` includes the library's public matrix, vector, rotation,
 automatic differentiation, and numerical algorithm headers. It defines no
 separate matrix operation; it is a convenience entry point for code that uses
 many parts of the library.
@@ -24,7 +24,7 @@ headers when practical to keep compile times and dependencies focused.
 ### Include the full API
 
 ```cpp
-#include <matrix/math.hpp>
+#include <src/math.hpp>
 
 matrix::Vector3f gravity(0.0f, 0.0f, 9.81f);
 matrix::Quaternionf attitude;
@@ -34,8 +34,8 @@ matrix::Vector3f body_gravity = attitude.rotateVectorInverse(gravity);
 ### Include only the pieces needed
 
 ```cpp
-#include <matrix/Vector3.hpp>
-#include <matrix/Quaternion.hpp>
+#include <src/Vector3.hpp>
+#include <src/Quaternion.hpp>
 
 matrix::Quaternionf q;
 matrix::Vector3f v(1.0f, 0.0f, 0.0f);
@@ -45,8 +45,8 @@ matrix::Vector3f rotated = q.rotateVector(v);
 ### Select types for a small embedded module
 
 ```cpp
-#include <matrix/SquareMatrix.hpp>
-#include <matrix/Vector.hpp>
+#include <src/SquareMatrix.hpp>
+#include <src/Vector.hpp>
 
 using Covariance = matrix::SquareMatrix<float, 6>;
 using State = matrix::Vector<float, 6>;

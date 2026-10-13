@@ -32,9 +32,9 @@
  ****************************************************************************/
 
 #include <gtest/gtest.h>
-#include <matrix/Dcm.hpp>
-#include <matrix/Dcm2.hpp>
-#include <matrix/Euler.hpp>
+#include <src/Dcm.hpp>
+#include <src/Dcm2.hpp>
+#include <src/Euler.hpp>
 
 using namespace matrix;
 

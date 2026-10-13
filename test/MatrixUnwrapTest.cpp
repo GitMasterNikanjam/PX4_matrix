@@ -1,4 +1,4 @@
-#include <matrix/math.hpp>
+#include <src/math.hpp>
 #include <gtest/gtest.h>
 
 using namespace matrix;

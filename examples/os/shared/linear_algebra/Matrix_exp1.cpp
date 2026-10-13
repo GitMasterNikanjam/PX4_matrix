@@ -21,8 +21,8 @@
 #include <iomanip>
 #include <limits>
 
-#include <matrix/Matrix.hpp>
-#include <matrix/SquareMatrix.hpp>
+#include <src/Matrix.hpp>
+#include <src/SquareMatrix.hpp>
 
 using namespace matrix;
 

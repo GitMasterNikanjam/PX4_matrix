@@ -32,8 +32,8 @@
  ****************************************************************************/
 
 #include <gtest/gtest.h>
-#include <matrix/filter.hpp>
-#include <matrix/Vector.hpp>
+#include <src/filter.hpp>
+#include <src/Vector.hpp>
 
 using namespace matrix;
 

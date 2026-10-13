@@ -1,2 +1,35 @@
-build/
+# CMake build trees and generated configuration files
+/build/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+Testing/
+
+# Compiler and firmware artifacts
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
 *.exe
+*.elf
+*.hex
+*.bin
+*.map
+*.d
+*.su
+*.lst
+*.list
+*.gcda
+*.gcno
+
+# Local IDE and operating-system files
+.vs/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db

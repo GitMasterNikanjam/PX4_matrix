@@ -6,7 +6,7 @@ and then by subject:
 ```text
 examples/
 ├── os/
-│   ├── shared/<topic>/    # Portable host examples (Linux and Windows)
+│   ├── shared/<topic>/    # Portable host example, with its CMakeLists.txt
 │   ├── linux/<topic>/     # Linux-only APIs or services
 │   └── windows/<topic>/   # Windows-only APIs or services
 └── mcu/
@@ -16,10 +16,9 @@ examples/
 Put an example in `os/shared/` when the same source builds and runs on multiple
 desktop operating systems. Put it under `os/linux/` or `os/windows/` when it
 uses that OS's APIs. Put embedded firmware examples under `mcu/<family>/`.
-The CMake build below compiles shared OS examples and conditionally includes an
-OS-specific subdirectory when it has its own `CMakeLists.txt`. MCU examples are
-kept out of the host build and should use a suitable cross-toolchain or vendor
-project setup.
+Each example's directory contains its own `CMakeLists.txt`. The shared and OS
+CMake files only collect examples; MCU examples are kept out of the host build
+and should use a suitable cross-toolchain or vendor project setup.
 
 ## Build and run `Matrix_exp1`
 
@@ -44,5 +43,13 @@ If CMake selected a different multi-configuration generator, use the
 configuration directory reported by that generator (for example, `Debug` in
 place of `Release`).
 
-The target is declared in `os/shared/CMakeLists.txt`, and its source is in
-`os/shared/linear_algebra/Matrix_exp1.cpp`.
+The target and its source are kept together in `os/shared/linear_algebra/`.
+Each example directory can be configured on its own or included in the
+aggregate `examples` build.
+
+To configure only this example, run these commands from the repository root:
+
+```powershell
+cmake -S examples/os/shared/linear_algebra -B build/Matrix_exp1
+cmake --build build/Matrix_exp1 --config Release
+```
