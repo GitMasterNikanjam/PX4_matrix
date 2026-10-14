@@ -42,11 +42,11 @@ only the headers an application needs when compile time or flash size matters.
 
 ## Theory only
 
-For a code-free overview of the mathematics behind the library, see
-[Mathematical concepts used by PX4 Matrix](math_concepts_README.md). It covers
-linear algebra, 3D rotations, automatic differentiation, numerical integration,
-Kalman estimation, and numerical precision, with external reading and video
-resources in English.
+For a code-free overview of the mathematics behind the library, see the
+[English guide](../README_concepts.md) or the [Persian guide](../README_concepts_fa.md).
+They cover linear algebra, 3D rotations, automatic differentiation, numerical
+integration, Kalman estimation, and numerical precision, with external reading
+and video resources.
 
 ## Suggested learning path
 

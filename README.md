@@ -39,8 +39,8 @@ The library consists of the following headers (included as needed):
 Detailed theory, API guidance, and multiple examples are available as separate
 files in [`README/`](README/README.md). The guide index links each public header
 to its own guide and includes notes for STM32 targets.
-For a code-free theory overview of the mathematics behind the library, see
-[`math_concepts_README.md`](README/math_concepts_README.md).
+For a code-free theory overview of the mathematics behind the library, see the
+[English guide](README_concepts.md) or the [Persian guide](README_concepts_fa.md).
 
 ## Quick Start
 
